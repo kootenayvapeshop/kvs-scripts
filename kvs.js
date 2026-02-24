@@ -8,28 +8,23 @@
    2. Stock Urgency Badges (product pages)
    3. Trust Badges (product pages)
    4. Google Tag Manager (noscript fallback injected)
+   5. Mailchimp Popup (mc.js loader)
    ============================================================ */
-
 (function() {
   'use strict';
-
   /* ──────────────────────────────────────
      1. AGE VERIFICATION GATE
   ────────────────────────────────────── */
-
   function getCookie(name) {
     var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : null;
   }
-
   function setCookie(name, value, days) {
     var expires = new Date(Date.now() + days * 864e5).toUTCString();
     document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; SameSite=Lax';
   }
-
   function initAgeGate() {
     if (getCookie('kvs_age_ok') === '1') return;
-
     var style = document.createElement('style');
     style.textContent = [
       '#kvs-age-gate{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:rgba(8,8,16,0.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:"Barlow","Arial",sans-serif;opacity:0;transition:opacity 0.35s ease;}',
@@ -50,7 +45,6 @@
       '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}'
     ].join('');
     document.head.appendChild(style);
-
     var gate = document.createElement('div');
     gate.id = 'kvs-age-gate';
     gate.setAttribute('role', 'dialog');
@@ -74,16 +68,13 @@
         '</div>',
       '</div>'
     ].join('');
-
     document.documentElement.style.overflow = 'hidden';
     document.body.appendChild(gate);
-
     requestAnimationFrame(function() {
       requestAnimationFrame(function() {
         gate.classList.add('kvs-visible');
       });
     });
-
     document.getElementById('kvs-age-yes').addEventListener('click', function() {
       setCookie('kvs_age_ok', '1', 30);
       gate.style.opacity = '0';
@@ -93,30 +84,24 @@
         document.documentElement.style.overflow = '';
       }, 300);
     });
-
     document.getElementById('kvs-age-no').addEventListener('click', function() {
       window.location.replace('https://www.google.com');
     });
   }
-
   /* ──────────────────────────────────────
      2. STOCK URGENCY BADGES
      Rewrites "In stock: X available" text
      with color-coded urgency messaging.
      CSS classes defined in Custom CSS.
   ────────────────────────────────────── */
-
   function initStockBadges() {
     var checkInterval = setInterval(function() {
       var stockEl = document.querySelector('.details-product-purchase__place span');
       if (!stockEl || stockEl.dataset.kvsProcessed) return;
-
       var match = stockEl.textContent.trim().match(/In stock:\s*(\d+)\s*available/);
       if (!match) return;
-
       stockEl.dataset.kvsProcessed = '1';
       var qty = parseInt(match[1]);
-
       if (qty <= 2) {
         stockEl.className += ' kvs-critical-stock';
         stockEl.textContent = '\uD83D\uDD25 Only ' + qty + ' left \u2014 order soon!';
@@ -128,18 +113,15 @@
         stockEl.textContent = '\u2713 In stock \u2014 ' + qty + ' available';
       }
     }, 800);
-
     // Stop checking after 30 seconds (not on a product page)
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
-
   /* ──────────────────────────────────────
      3. TRUST BADGES
      Injects trust indicators below the
      Add to Bag button on product pages.
      CSS classes defined in Custom CSS.
   ────────────────────────────────────── */
-
   function initTrustBadges() {
     var checkInterval = setInterval(function() {
       // Don't double-inject
@@ -147,17 +129,13 @@
         clearInterval(checkInterval);
         return;
       }
-
       // Find the Add to Bag button area
       var buyBtn = document.querySelector('.details-product-purchase__add-to-bag');
       if (!buyBtn) return;
-
       // Find the parent purchase container to append after
       var purchaseArea = buyBtn.closest('.details-product-purchase') || buyBtn.parentElement;
       if (!purchaseArea) return;
-
       clearInterval(checkInterval);
-
       var badges = document.createElement('div');
       badges.className = 'kvs-trust-badges';
       badges.innerHTML = [
@@ -166,17 +144,13 @@
         '<div class="kvs-trust-badge">\u23F0 Same-Day Dispatch</div>',
         '<div class="kvs-trust-badge">\u2705 Tested by Our Team</div>'
       ].join('');
-
       purchaseArea.appendChild(badges);
     }, 800);
-
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
-
   /* ──────────────────────────────────────
      4. GTM NOSCRIPT FALLBACK
   ────────────────────────────────────── */
-
   function initGTMNoscript() {
     var noscript = document.createElement('noscript');
     var iframe = document.createElement('iframe');
@@ -188,25 +162,29 @@
     noscript.appendChild(iframe);
     document.body.insertBefore(noscript, document.body.firstChild);
   }
-
+  /* ──────────────────────────────────────
+     5. MAILCHIMP POPUP (mc.js)
+  ────────────────────────────────────── */
+  function initMailchimp() {
+    !function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/967dfb1988c0dce580a3462f1/27a7a21cddeb06fe4c455de67.js");
+  }
   /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
-
   // Age gate runs immediately
   initAgeGate();
-
   // Everything else waits for DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       initStockBadges();
       initTrustBadges();
       initGTMNoscript();
+      initMailchimp();
     });
   } else {
     initStockBadges();
     initTrustBadges();
     initGTMNoscript();
+    initMailchimp();
   }
-
 })();
