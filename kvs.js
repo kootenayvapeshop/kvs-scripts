@@ -9,6 +9,7 @@
    3. Trust Badges (product pages)
    4. Google Tag Manager (noscript fallback injected)
    5. Mailchimp Popup (mc.js loader)
+   6. "We Ship To" footer bar (province links)
    ============================================================ */
 (function() {
   'use strict';
@@ -104,13 +105,13 @@
       var qty = parseInt(match[1]);
       if (qty <= 2) {
         stockEl.className += ' kvs-critical-stock';
-        stockEl.textContent = '\uD83D\uDD25 Only ' + qty + ' left \u2014 order soon!';
+        stockEl.textContent = '\uD83D\uDD25 Only ' + qty + ' left — order soon!';
       } else if (qty <= 5) {
         stockEl.className += ' kvs-low-stock';
         stockEl.textContent = '\u26A1 Only ' + qty + ' left in stock';
       } else {
         stockEl.className += ' kvs-in-stock';
-        stockEl.textContent = '\u2713 In stock \u2014 ' + qty + ' available';
+        stockEl.textContent = '\u2713 In stock — ' + qty + ' available';
       }
     }, 800);
     // Stop checking after 30 seconds (not on a product page)
@@ -169,6 +170,55 @@
     !function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/967dfb1988c0dce580a3462f1/27a7a21cddeb06fe4c455de67.js");
   }
   /* ──────────────────────────────────────
+     6. "WE SHIP TO" FOOTER BAR
+     Injects a shipping-links strip above
+     the legal/policy footer on every page.
+  ────────────────────────────────────── */
+  function initShippingBar() {
+    if (document.getElementById('kvs-ship-bar')) return;
+
+    var bar = document.createElement('div');
+    bar.id = 'kvs-ship-bar';
+    bar.innerHTML = [
+      '<div id="kvs-ship-bar-inner">',
+        '<strong>We Ship Across Canada</strong>',
+        '<span class="kvs-ship-links">',
+          '<a href="/ship-to-british-columbia-vape">British Columbia</a>',
+          '<span class="kvs-ship-sep">|</span>',
+          '<a href="/ship-to-saskatchewan-vape">Saskatchewan</a>',
+          '<span class="kvs-ship-sep">|</span>',
+          '<a href="/ship-to-nova-scotia-vape">Nova Scotia</a>',
+          '<span class="kvs-ship-sep">|</span>',
+          '<a href="/ship-to-newfoundland-labrador-vape">Newfoundland & Labrador</a>',
+          '<span class="kvs-ship-sep">|</span>',
+          '<a href="/shipping-eligibility-canada">Full Shipping Info</a>',
+        '</span>',
+      '</div>'
+    ].join('');
+
+    var style = document.createElement('style');
+    style.textContent = [
+      '#kvs-ship-bar{background:linear-gradient(135deg,rgba(14,14,26,0.95),rgba(20,20,40,0.95));border-top:1px solid rgba(155,45,255,0.25);border-bottom:1px solid rgba(155,45,255,0.25);padding:0;margin:0;font-family:"Barlow","Arial",sans-serif;}',
+      '#kvs-ship-bar-inner{max-width:1200px;margin:0 auto;padding:1rem 1.5rem;text-align:center;}',
+      '#kvs-ship-bar strong{display:block;font-family:"Bebas Neue","Arial Narrow",sans-serif;font-size:1.1rem;letter-spacing:0.06em;background:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem;}',
+      '.kvs-ship-links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0.25rem 0;}',
+      '.kvs-ship-links a{color:rgba(200,200,220,0.85);font-size:0.82rem;text-decoration:none;padding:0.15rem 0.5rem;transition:color 0.2s;}',
+      '.kvs-ship-links a:hover{color:#00d4ff;}',
+      '.kvs-ship-sep{color:rgba(155,45,255,0.35);font-size:0.75rem;padding:0 0.15rem;}',
+      '@media(max-width:600px){.kvs-ship-links{gap:0.1rem 0;}.kvs-ship-links a{font-size:0.78rem;padding:0.15rem 0.35rem;}.kvs-ship-sep{padding:0 0.05rem;}}'
+    ].join('');
+    document.head.appendChild(style);
+
+    var footer = document.querySelector('.ec-footer') ||
+                 document.querySelector('footer') ||
+                 document.querySelector('[class*="footer"]');
+    if (footer) {
+      footer.parentNode.insertBefore(bar, footer);
+    } else {
+      document.body.appendChild(bar);
+    }
+  }
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
   // Age gate runs immediately
@@ -180,11 +230,13 @@
       initTrustBadges();
       initGTMNoscript();
       initMailchimp();
+      initShippingBar();
     });
   } else {
     initStockBadges();
     initTrustBadges();
     initGTMNoscript();
     initMailchimp();
+    initShippingBar();
   }
 })();
