@@ -267,12 +267,11 @@
       '</div>'
     ].join('');
 
-    // Wait for cart area to appear then insert
+    // Wait for Ecwid cart area to appear then insert
     var checkInterval = setInterval(function() {
       var cartArea = document.querySelector('.ec-cart') ||
                      document.querySelector('.ec-cart__body') ||
-                     document.querySelector('[class*="cart"]') ||
-                     document.querySelector('main') ||
+                     document.querySelector('.ec-store__cart-page') ||
                      document.querySelector('.ec-store');
       if (!cartArea) return;
       clearInterval(checkInterval);
