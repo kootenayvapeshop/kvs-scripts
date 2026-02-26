@@ -10,6 +10,7 @@
    4. Google Tag Manager (noscript fallback injected)
    5. Mailchimp Popup (mc.js loader)
    6. "We Ship To" footer bar (province links)
+   7. Shipping Eligibility Guard (cart/checkout banner)
    ============================================================ */
 (function() {
   'use strict';
@@ -219,6 +220,76 @@
     }
   }
   /* ──────────────────────────────────────
+     7. SHIPPING ELIGIBILITY GUARD
+     Shows a banner on cart/checkout pages
+     reminding users which provinces we
+     ship nicotine products to.
+     Dismissible per session.
+  ────────────────────────────────────── */
+  function initShippingGuard() {
+    // Only show on cart/checkout pages
+    var href = window.location.href;
+    var isCartPage = href.indexOf('/cart') !== -1 ||
+                     href.indexOf('#!/~/cart') !== -1;
+    var isCheckout = href.indexOf('/checkout') !== -1 ||
+                     href.indexOf('#!/~/checkout') !== -1;
+
+    if (!isCartPage && !isCheckout) return;
+
+    // Check if user dismissed it this session
+    try {
+      if (sessionStorage.getItem('kvs_shipping_banner_dismissed')) return;
+    } catch (e) { /* sessionStorage blocked — show banner anyway */ }
+
+    // Inject styles
+    var style = document.createElement('style');
+    style.textContent = [
+      '#kvs-shipping-banner{background:linear-gradient(135deg,rgba(155,45,255,0.12),rgba(0,212,255,0.08));border:1px solid rgba(155,45,255,0.25);border-radius:10px;padding:0;margin:1rem auto;max-width:960px;font-family:"Barlow","Arial",sans-serif;font-size:0.88rem;line-height:1.6;color:rgba(200,200,220,0.9);}',
+      '#kvs-shipping-banner-inner{padding:1rem 1.5rem;position:relative;padding-right:3rem;}',
+      '#kvs-shipping-banner a{color:#00d4ff;text-decoration:underline;}',
+      '#kvs-shipping-banner strong{color:#ffffff;}',
+      '#kvs-shipping-banner-close{position:absolute;top:0.75rem;right:1rem;background:none;border:none;color:rgba(144,144,176,0.6);font-size:1.3rem;cursor:pointer;padding:0.25rem;line-height:1;}',
+      '#kvs-shipping-banner-close:hover{color:#ffffff;}'
+    ].join('');
+    document.head.appendChild(style);
+
+    // Create the banner
+    var banner = document.createElement('div');
+    banner.id = 'kvs-shipping-banner';
+    banner.innerHTML = [
+      '<div id="kvs-shipping-banner-inner">',
+        '<strong>Shipping Note:</strong> ',
+        'Nicotine products (e-liquid, disposables, pods) ship to <strong>BC, Saskatchewan, Nova Scotia &amp; Newfoundland</strong> only. ',
+        'Non-nicotine items (hardware, coils, accessories) ship Canada-wide. ',
+        '<a href="/shipping-eligibility-canada">Full details \u2192</a>',
+        '<button id="kvs-shipping-banner-close" aria-label="Close">&times;</button>',
+      '</div>'
+    ].join('');
+
+    // Wait for cart area to appear then insert
+    var checkInterval = setInterval(function() {
+      var cartArea = document.querySelector('.ec-cart') ||
+                     document.querySelector('.ec-cart__body') ||
+                     document.querySelector('[class*="cart"]') ||
+                     document.querySelector('main') ||
+                     document.querySelector('.ec-store');
+      if (!cartArea) return;
+      clearInterval(checkInterval);
+      cartArea.parentNode.insertBefore(banner, cartArea);
+
+      // Close button handler
+      document.getElementById('kvs-shipping-banner-close').addEventListener('click', function() {
+        banner.style.display = 'none';
+        try {
+          sessionStorage.setItem('kvs_shipping_banner_dismissed', '1');
+        } catch (e) { /* sessionStorage blocked */ }
+      });
+    }, 500);
+
+    // Stop trying after 15 seconds
+    setTimeout(function() { clearInterval(checkInterval); }, 15000);
+  }
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
   // Age gate runs immediately
@@ -231,6 +302,7 @@
       initGTMNoscript();
       initMailchimp();
       initShippingBar();
+      initShippingGuard();
     });
   } else {
     initStockBadges();
@@ -238,5 +310,6 @@
     initGTMNoscript();
     initMailchimp();
     initShippingBar();
+    initShippingGuard();
   }
 })();
