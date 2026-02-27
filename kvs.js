@@ -1,32 +1,43 @@
 /* ============================================================
-   KVS — Site Scripts v1.0
+   KVS — Site Scripts v2.0
    External JS for Kootenay Vape Shops
-   Loaded via: <script src="https://cdn.jsdelivr.net/gh/USERNAME/kvs-scripts/kvs.js"></script>
-   
+   Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
+
    Contains:
-   1. Age Verification Gate (19+ BC requirement)
-   2. Stock Urgency Badges (product pages)
-   3. Trust Badges (product pages)
-   4. Google Tag Manager (noscript fallback injected)
-   5. Mailchimp Popup (mc.js loader)
-   6. "We Ship To" footer bar (province links)
-   7. Shipping Eligibility Guard (cart/checkout banner)
+    1.  Age Verification Gate (19+ requirement)
+    2.  Stock Urgency Badges (product pages)
+    3.  Trust Badges (product pages) — UPDATED: more robust selector
+    4.  Google Tag Manager (noscript fallback injected)
+    5.  Mailchimp Popup (mc.js loader)
+    6.  "We Ship To" footer bar (province links)
+    7.  Shipping Eligibility Guard (cart/checkout banner) — UPDATED: repositioned above cart
+    8.  Sold-Out Variant Auto-Selection (product pages) — NEW
+    9.  Sticky Add-to-Cart Bar (mobile product pages) — NEW
+   10.  Shipping Estimate Note (cart page) — NEW
+   11.  Empty Search Recovery (search results) — NEW
+   12.  Accessibility Fixes (focus outlines, contrast) — NEW
    ============================================================ */
+
 (function() {
   'use strict';
+
   /* ──────────────────────────────────────
      1. AGE VERIFICATION GATE
-  ────────────────────────────────────── */
+     ────────────────────────────────────── */
+
   function getCookie(name) {
     var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return match ? match[2] : null;
   }
+
   function setCookie(name, value, days) {
     var expires = new Date(Date.now() + days * 864e5).toUTCString();
     document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; SameSite=Lax';
   }
+
   function initAgeGate() {
     if (getCookie('kvs_age_ok') === '1') return;
+
     var style = document.createElement('style');
     style.textContent = [
       '#kvs-age-gate{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:rgba(8,8,16,0.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:"Barlow","Arial",sans-serif;opacity:0;transition:opacity 0.35s ease;}',
@@ -47,6 +58,7 @@
       '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}'
     ].join('');
     document.head.appendChild(style);
+
     var gate = document.createElement('div');
     gate.id = 'kvs-age-gate';
     gate.setAttribute('role', 'dialog');
@@ -70,13 +82,16 @@
         '</div>',
       '</div>'
     ].join('');
+
     document.documentElement.style.overflow = 'hidden';
     document.body.appendChild(gate);
+
     requestAnimationFrame(function() {
       requestAnimationFrame(function() {
         gate.classList.add('kvs-visible');
       });
     });
+
     document.getElementById('kvs-age-yes').addEventListener('click', function() {
       setCookie('kvs_age_ok', '1', 30);
       gate.style.opacity = '0';
@@ -86,24 +101,31 @@
         document.documentElement.style.overflow = '';
       }, 300);
     });
+
     document.getElementById('kvs-age-no').addEventListener('click', function() {
       window.location.replace('https://www.google.com');
     });
   }
+
+
   /* ──────────────────────────────────────
      2. STOCK URGENCY BADGES
      Rewrites "In stock: X available" text
      with color-coded urgency messaging.
      CSS classes defined in Custom CSS.
-  ────────────────────────────────────── */
+     ────────────────────────────────────── */
+
   function initStockBadges() {
     var checkInterval = setInterval(function() {
       var stockEl = document.querySelector('.details-product-purchase__place span');
       if (!stockEl || stockEl.dataset.kvsProcessed) return;
+
       var match = stockEl.textContent.trim().match(/In stock:\s*(\d+)\s*available/);
       if (!match) return;
+
       stockEl.dataset.kvsProcessed = '1';
       var qty = parseInt(match[1]);
+
       if (qty <= 2) {
         stockEl.className += ' kvs-critical-stock';
         stockEl.textContent = '\uD83D\uDD25 Only ' + qty + ' left — order soon!';
@@ -115,15 +137,22 @@
         stockEl.textContent = '\u2713 In stock — ' + qty + ' available';
       }
     }, 800);
-    // Stop checking after 30 seconds (not on a product page)
+
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
+
+
   /* ──────────────────────────────────────
-     3. TRUST BADGES
+     3. TRUST BADGES (UPDATED v2.0)
      Injects trust indicators below the
      Add to Bag button on product pages.
-     CSS classes defined in Custom CSS.
-  ────────────────────────────────────── */
+
+     v2.0 FIX: Uses multiple fallback
+     selectors to match all Ecwid product
+     page layouts. Previously failed on
+     some PDPs (e.g. Flavour Beast FURY).
+     ────────────────────────────────────── */
+
   function initTrustBadges() {
     var checkInterval = setInterval(function() {
       // Don't double-inject
@@ -131,13 +160,39 @@
         clearInterval(checkInterval);
         return;
       }
-      // Find the Add to Bag button area
-      var buyBtn = document.querySelector('.details-product-purchase__add-to-bag');
-      if (!buyBtn) return;
-      // Find the parent purchase container to append after
-      var purchaseArea = buyBtn.closest('.details-product-purchase') || buyBtn.parentElement;
+
+      // Try multiple selectors to find the purchase area
+      // Different Ecwid layouts use different class names
+      var purchaseArea = null;
+      var selectors = [
+        '.details-product-purchase__add-to-bag',
+        '.details-product-purchase',
+        '.product-details__product-purchase',
+        '.details-product-purchase__buttons',
+        '[class*="product-purchase"]',
+        '.ec-product-page .form-control--button--add-to-bag',
+        '.product-details-module'
+      ];
+
+      for (var i = 0; i < selectors.length; i++) {
+        var el = document.querySelector(selectors[i]);
+        if (el) {
+          // For button-level selectors, walk up to the container
+          if (selectors[i].indexOf('add-to-bag') !== -1 || selectors[i].indexOf('button') !== -1) {
+            purchaseArea = el.closest('.details-product-purchase') ||
+                           el.closest('[class*="product-purchase"]') ||
+                           el.parentElement;
+          } else {
+            purchaseArea = el;
+          }
+          break;
+        }
+      }
+
       if (!purchaseArea) return;
+
       clearInterval(checkInterval);
+
       var badges = document.createElement('div');
       badges.className = 'kvs-trust-badges';
       badges.innerHTML = [
@@ -146,13 +201,23 @@
         '<div class="kvs-trust-badge">\u23F0 Same-Day Dispatch</div>',
         '<div class="kvs-trust-badge">\u2705 Tested by Our Team</div>'
       ].join('');
-      purchaseArea.appendChild(badges);
+
+      // Insert after the purchase area
+      if (purchaseArea.nextSibling) {
+        purchaseArea.parentNode.insertBefore(badges, purchaseArea.nextSibling);
+      } else {
+        purchaseArea.parentNode.appendChild(badges);
+      }
     }, 800);
+
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
+
+
   /* ──────────────────────────────────────
      4. GTM NOSCRIPT FALLBACK
-  ────────────────────────────────────── */
+     ────────────────────────────────────── */
+
   function initGTMNoscript() {
     var noscript = document.createElement('noscript');
     var iframe = document.createElement('iframe');
@@ -164,17 +229,21 @@
     noscript.appendChild(iframe);
     document.body.insertBefore(noscript, document.body.firstChild);
   }
+
+
   /* ──────────────────────────────────────
      5. MAILCHIMP POPUP (mc.js)
-  ────────────────────────────────────── */
+     ────────────────────────────────────── */
+
   function initMailchimp() {
     !function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/967dfb1988c0dce580a3462f1/27a7a21cddeb06fe4c455de67.js");
   }
+
+
   /* ──────────────────────────────────────
      6. "WE SHIP TO" FOOTER BAR
-     Injects a shipping-links strip above
-     the legal/policy footer on every page.
-  ────────────────────────────────────── */
+     ────────────────────────────────────── */
+
   function initShippingBar() {
     if (document.getElementById('kvs-ship-bar')) return;
 
@@ -219,29 +288,24 @@
       document.body.appendChild(bar);
     }
   }
-  /* ──────────────────────────────────────
-     7. SHIPPING ELIGIBILITY GUARD
-     Shows a banner on cart/checkout pages
-     reminding users which provinces we
-     ship nicotine products to.
-     Dismissible per session.
-  ────────────────────────────────────── */
-  function initShippingGuard() {
-    // Only show on cart/checkout pages
-    var href = window.location.href;
-    var isCartPage = href.indexOf('/cart') !== -1 ||
-                     href.indexOf('#!/~/cart') !== -1;
-    var isCheckout = href.indexOf('/checkout') !== -1 ||
-                     href.indexOf('#!/~/checkout') !== -1;
 
+
+  /* ──────────────────────────────────────
+     7. SHIPPING ELIGIBILITY GUARD (UPDATED v2.0)
+     Shows a banner on cart/checkout pages.
+     v2.0: Inserts ABOVE cart area.
+     ────────────────────────────────────── */
+
+  function initShippingGuard() {
+    var href = window.location.href;
+    var isCartPage = href.indexOf('/cart') !== -1 || href.indexOf('#!/~/cart') !== -1;
+    var isCheckout = href.indexOf('/checkout') !== -1 || href.indexOf('#!/~/checkout') !== -1;
     if (!isCartPage && !isCheckout) return;
 
-    // Check if user dismissed it this session
     try {
       if (sessionStorage.getItem('kvs_shipping_banner_dismissed')) return;
-    } catch (e) { /* sessionStorage blocked — show banner anyway */ }
+    } catch (e) {}
 
-    // Inject styles
     var style = document.createElement('style');
     style.textContent = [
       '#kvs-shipping-banner{background:linear-gradient(135deg,rgba(155,45,255,0.12),rgba(0,212,255,0.08));border:1px solid rgba(155,45,255,0.25);border-radius:10px;padding:0;margin:1rem auto;max-width:960px;width:calc(100% - 2rem);box-sizing:border-box;font-family:"Barlow","Arial",sans-serif;font-size:0.88rem;line-height:1.6;color:rgba(200,200,220,0.9);word-wrap:break-word;overflow-wrap:break-word;}',
@@ -254,7 +318,6 @@
     ].join('');
     document.head.appendChild(style);
 
-    // Create the banner
     var banner = document.createElement('div');
     banner.id = 'kvs-shipping-banner';
     banner.innerHTML = [
@@ -267,7 +330,6 @@
       '</div>'
     ].join('');
 
-    // Wait for Ecwid cart area to appear then insert
     var checkInterval = setInterval(function() {
       var cartArea = document.querySelector('.ec-cart') ||
                      document.querySelector('.ec-cart__body') ||
@@ -275,26 +337,314 @@
                      document.querySelector('.ec-store');
       if (!cartArea) return;
       clearInterval(checkInterval);
+
+      // v2.0: Insert BEFORE (above) the cart area
       cartArea.parentNode.insertBefore(banner, cartArea);
 
-      // Close button handler
       document.getElementById('kvs-shipping-banner-close').addEventListener('click', function() {
         banner.style.display = 'none';
-        try {
-          sessionStorage.setItem('kvs_shipping_banner_dismissed', '1');
-        } catch (e) { /* sessionStorage blocked */ }
+        try { sessionStorage.setItem('kvs_shipping_banner_dismissed', '1'); } catch (e) {}
       });
     }, 500);
 
-    // Stop trying after 15 seconds
     setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
+
+
+  /* ──────────────────────────────────────
+     8. SOLD-OUT VARIANT AUTO-SELECTION (NEW)
+     If the default variant is sold out,
+     auto-selects the first in-stock variant.
+     ────────────────────────────────────── */
+
+  function initVariantAutoSelect() {
+    var attempts = 0;
+    var maxAttempts = 40;
+
+    var checkInterval = setInterval(function() {
+      attempts++;
+      if (attempts > maxAttempts) { clearInterval(checkInterval); return; }
+
+      // Check if current variant is sold out
+      var soldOut = false;
+      var stockEl = document.querySelector('.details-product-purchase__place span');
+      if (stockEl && /out of stock|sold out/i.test(stockEl.textContent)) {
+        soldOut = true;
+      }
+      if (!soldOut) return;
+
+      // Find variant dropdowns
+      var selects = document.querySelectorAll(
+        '.product-details__product-options select, ' +
+        '.details-product-options select, ' +
+        '.product-details-module select'
+      );
+      if (selects.length === 0) return;
+      clearInterval(checkInterval);
+
+      var primarySelect = selects[0];
+      var options = primarySelect.querySelectorAll('option');
+      var currentIndex = primarySelect.selectedIndex;
+
+      function tryNextOption(index) {
+        if (index >= options.length) return;
+        if (index === currentIndex) { tryNextOption(index + 1); return; }
+
+        primarySelect.selectedIndex = index;
+        primarySelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+        setTimeout(function() {
+          var newStockEl = document.querySelector('.details-product-purchase__place span');
+          if (!newStockEl) { tryNextOption(index + 1); return; }
+
+          var text = newStockEl.textContent.trim().toLowerCase();
+          if (text.indexOf('out of stock') !== -1 || text.indexOf('sold out') !== -1) {
+            tryNextOption(index + 1);
+          }
+          // Found in-stock variant — stop
+        }, 600);
+      }
+
+      tryNextOption(0);
+    }, 750);
+  }
+
+
+  /* ──────────────────────────────────────
+     9. STICKY ADD-TO-CART BAR — MOBILE (NEW)
+     Fixed bottom bar with price + ATC
+     when native button scrolls out of view.
+     Only activates on viewports < 768px.
+     ────────────────────────────────────── */
+
+  function initStickyATC() {
+    if (window.innerWidth >= 768) return;
+
+    var style = document.createElement('style');
+    style.textContent = [
+      '#kvs-sticky-atc{position:fixed;bottom:0;left:0;right:0;z-index:9998;background:linear-gradient(160deg,#0e0e1a,#141428);border-top:1px solid rgba(155,45,255,0.35);padding:0.65rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;font-family:"Barlow","Arial",sans-serif;transform:translateY(100%);transition:transform 0.3s ease;box-shadow:0 -4px 20px rgba(0,0,0,0.5);}',
+      '#kvs-sticky-atc.kvs-sticky-visible{transform:translateY(0);}',
+      '#kvs-sticky-atc-info{flex:1;min-width:0;overflow:hidden;}',
+      '#kvs-sticky-atc-name{font-size:0.78rem;color:rgba(200,200,220,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.15rem;}',
+      '#kvs-sticky-atc-price{font-size:1.1rem;font-weight:700;color:#ffffff;}',
+      '#kvs-sticky-atc-btn{flex-shrink:0;background:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b);color:#ffffff;border:none;border-radius:50px;padding:0.7rem 1.5rem;font-family:"Barlow","Arial",sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;white-space:nowrap;box-shadow:0 4px 15px rgba(155,45,255,0.4);}',
+      '#kvs-sticky-atc-btn:active{transform:scale(0.97);}',
+      '#kvs-sticky-atc-btn.kvs-sticky-disabled{opacity:0.4;pointer-events:none;}'
+    ].join('');
+    document.head.appendChild(style);
+
+    var attempts = 0;
+    var checkInterval = setInterval(function() {
+      attempts++;
+      if (attempts > 40) { clearInterval(checkInterval); return; }
+
+      var nativeBtn = document.querySelector('.details-product-purchase__add-to-bag .form-control__button--add-to-bag') ||
+                      document.querySelector('.details-product-purchase__add-to-bag button') ||
+                      document.querySelector('[class*="add-to-bag"] button');
+      if (!nativeBtn) return;
+
+      var nameEl = document.querySelector('.product-details__product-title') ||
+                   document.querySelector('[class*="product-title"]') ||
+                   document.querySelector('h1');
+      var priceEl = document.querySelector('.details-product-purchase__price .ec-price-item') ||
+                    document.querySelector('.details-product-purchase__price');
+      if (!nameEl || !priceEl) return;
+
+      clearInterval(checkInterval);
+
+      var bar = document.createElement('div');
+      bar.id = 'kvs-sticky-atc';
+      bar.innerHTML = [
+        '<div id="kvs-sticky-atc-info">',
+          '<div id="kvs-sticky-atc-name"></div>',
+          '<div id="kvs-sticky-atc-price"></div>',
+        '</div>',
+        '<button id="kvs-sticky-atc-btn">Add to Bag</button>'
+      ].join('');
+      document.body.appendChild(bar);
+
+      var stickyName = document.getElementById('kvs-sticky-atc-name');
+      var stickyPrice = document.getElementById('kvs-sticky-atc-price');
+      var stickyBtn = document.getElementById('kvs-sticky-atc-btn');
+
+      function updateInfo() {
+        stickyName.textContent = nameEl.textContent.trim();
+        var currentPrice = document.querySelector('.details-product-purchase__price .ec-price-item') ||
+                           document.querySelector('.details-product-purchase__price');
+        if (currentPrice) stickyPrice.textContent = currentPrice.textContent.trim();
+
+        var stockEl = document.querySelector('.details-product-purchase__place span');
+        if (stockEl && /out of stock|sold out/i.test(stockEl.textContent)) {
+          stickyBtn.classList.add('kvs-sticky-disabled');
+          stickyBtn.textContent = 'Sold Out';
+        } else {
+          stickyBtn.classList.remove('kvs-sticky-disabled');
+          stickyBtn.textContent = 'Add to Bag';
+        }
+      }
+      updateInfo();
+
+      // Watch for variant changes to update price/stock
+      var observer = new MutationObserver(function() { setTimeout(updateInfo, 300); });
+      var purchaseArea = nativeBtn.closest('.details-product-purchase') || nativeBtn.parentElement.parentElement;
+      if (purchaseArea) {
+        observer.observe(purchaseArea, { childList: true, subtree: true, characterData: true });
+      }
+
+      // Click triggers the real ATC button
+      stickyBtn.addEventListener('click', function() {
+        if (stickyBtn.classList.contains('kvs-sticky-disabled')) return;
+        nativeBtn.click();
+      });
+
+      // Show/hide via IntersectionObserver
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            bar.classList.remove('kvs-sticky-visible');
+          } else {
+            bar.classList.add('kvs-sticky-visible');
+          }
+        });
+      }, { threshold: 0 });
+      io.observe(nativeBtn);
+    }, 750);
+  }
+
+
+  /* ──────────────────────────────────────
+     10. SHIPPING ESTIMATE NOTE — CART (NEW)
+     "Shipping calculated at checkout" note
+     near the subtotal to reduce abandonment.
+     ────────────────────────────────────── */
+
+  function initShippingEstimate() {
+    var href = window.location.href;
+    if (href.indexOf('/cart') === -1 && href.indexOf('#!/~/cart') === -1) return;
+
+    var style = document.createElement('style');
+    style.textContent = [
+      '#kvs-shipping-note{background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);border-radius:8px;padding:0.6rem 1rem;margin:0.75rem 0;font-family:"Barlow","Arial",sans-serif;font-size:0.82rem;color:rgba(200,200,220,0.85);text-align:center;line-height:1.5;}',
+      '#kvs-shipping-note strong{color:#00d4ff;}',
+      '#kvs-shipping-note a{color:#00d4ff;text-decoration:underline;}'
+    ].join('');
+    document.head.appendChild(style);
+
+    var checkInterval = setInterval(function() {
+      if (document.getElementById('kvs-shipping-note')) { clearInterval(checkInterval); return; }
+
+      var summaryArea = document.querySelector('.ec-cart__sidebar') ||
+                        document.querySelector('.ec-cart-summary') ||
+                        document.querySelector('.ec-cart__body-inner') ||
+                        document.querySelector('[class*="cart-summary"]');
+      if (!summaryArea) {
+        var subtotalEl = document.querySelector('[class*="cart__total"]');
+        if (subtotalEl) summaryArea = subtotalEl.parentElement;
+      }
+      if (!summaryArea) return;
+      clearInterval(checkInterval);
+
+      var note = document.createElement('div');
+      note.id = 'kvs-shipping-note';
+      note.innerHTML = '<strong>\uD83D\uDCE6 Shipping</strong> calculated at the next step based on your address and order weight. ' +
+                        '<a href="/shipping-eligibility-canada">See where we ship \u2192</a>';
+
+      var checkoutBtn = summaryArea.querySelector('[class*="checkout"]') ||
+                        summaryArea.querySelector('button');
+      if (checkoutBtn) {
+        checkoutBtn.parentNode.insertBefore(note, checkoutBtn);
+      } else {
+        summaryArea.appendChild(note);
+      }
+    }, 800);
+
+    setTimeout(function() { clearInterval(checkInterval); }, 15000);
+  }
+
+
+  /* ──────────────────────────────────────
+     11. EMPTY SEARCH RECOVERY (NEW)
+     When search returns zero results, injects
+     links to popular categories.
+     ────────────────────────────────────── */
+
+  function initSearchRecovery() {
+    if (window.location.href.indexOf('/search') === -1) return;
+
+    var style = document.createElement('style');
+    style.textContent = [
+      '#kvs-search-recovery{background:linear-gradient(135deg,rgba(155,45,255,0.08),rgba(0,212,255,0.05));border:1px solid rgba(155,45,255,0.2);border-radius:12px;padding:1.5rem;margin:1.5rem auto;max-width:600px;text-align:center;font-family:"Barlow","Arial",sans-serif;}',
+      '#kvs-search-recovery h3{font-family:"Bebas Neue","Arial Narrow",sans-serif;font-size:1.3rem;letter-spacing:0.04em;color:#ffffff;margin:0 0 0.75rem 0;}',
+      '#kvs-search-recovery p{font-size:0.85rem;color:rgba(200,200,220,0.8);margin:0 0 1rem 0;line-height:1.5;}',
+      '.kvs-search-links{display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem;}',
+      '.kvs-search-links a{display:inline-block;background:rgba(155,45,255,0.15);border:1px solid rgba(155,45,255,0.3);border-radius:50px;padding:0.45rem 1rem;color:rgba(240,240,255,0.9);font-size:0.82rem;text-decoration:none;transition:background 0.2s,border-color 0.2s;}',
+      '.kvs-search-links a:hover{background:rgba(155,45,255,0.3);border-color:rgba(155,45,255,0.5);}'
+    ].join('');
+    document.head.appendChild(style);
+
+    var checkInterval = setInterval(function() {
+      if (document.getElementById('kvs-search-recovery')) { clearInterval(checkInterval); return; }
+
+      // Detect zero-results state
+      var noResults = document.querySelector('.ec-search--no-results') ||
+                      document.querySelector('[class*="search--no-results"]') ||
+                      document.querySelector('.grid__no-products-found');
+
+      if (!noResults) {
+        var breadcrumb = document.querySelector('.ec-breadcrumbs');
+        if (breadcrumb && /no matches/i.test(breadcrumb.textContent)) {
+          noResults = breadcrumb;
+        }
+      }
+      if (!noResults) return;
+      clearInterval(checkInterval);
+
+      var recovery = document.createElement('div');
+      recovery.id = 'kvs-search-recovery';
+      recovery.innerHTML = [
+        '<h3>Try Browsing Our Categories</h3>',
+        '<p>We might have what you\'re looking for under a different name.</p>',
+        '<div class="kvs-search-links">',
+          '<a href="/products/e-Liquid-&-Disposables-c181465295">E-Liquid (Salt)</a>',
+          '<a href="/products/e-Liquid-&-Disposables-c181465295">E-Liquid (Freebase)</a>',
+          '<a href="/products/e-Liquid-&-Disposables-c181465295">Disposables</a>',
+          '<a href="/products/Vape-Hardware-c181465792">Hardware & Kits</a>',
+          '<a href="/products/Vape-Hardware-c181465792">Coils & Pods</a>',
+          '<a href="/products/420-c181460866">Accessories</a>',
+        '</div>'
+      ].join('');
+
+      noResults.parentNode.insertBefore(recovery, noResults.nextSibling);
+    }, 1000);
+
+    setTimeout(function() { clearInterval(checkInterval); }, 20000);
+  }
+
+
+  /* ──────────────────────────────────────
+     12. ACCESSIBILITY FIXES (NEW)
+     Restores focus outlines and improves
+     contrast. WCAG 2.4.7 + 1.4.3.
+     ────────────────────────────────────── */
+
+  function initAccessibilityFixes() {
+    var style = document.createElement('style');
+    style.textContent = [
+      '*:focus-visible{outline:2px solid #00d4ff !important;outline-offset:2px !important;}',
+      'a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #00d4ff !important;outline-offset:2px !important;}',
+      '*:focus:not(:focus-visible){outline:none !important;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+
   /* ──────────────────────────────────────
      INIT — Run everything
-  ────────────────────────────────────── */
-  // Age gate runs immediately
+     ────────────────────────────────────── */
+
   initAgeGate();
-  // Everything else waits for DOM
+  initAccessibilityFixes();
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       initStockBadges();
@@ -303,6 +653,10 @@
       initMailchimp();
       initShippingBar();
       initShippingGuard();
+      initVariantAutoSelect();
+      initStickyATC();
+      initShippingEstimate();
+      initSearchRecovery();
     });
   } else {
     initStockBadges();
@@ -311,5 +665,10 @@
     initMailchimp();
     initShippingBar();
     initShippingGuard();
+    initVariantAutoSelect();
+    initStickyATC();
+    initShippingEstimate();
+    initSearchRecovery();
   }
+
 })();
