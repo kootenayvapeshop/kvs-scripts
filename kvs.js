@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v2.5
+   KVS — Site Scripts v2.6
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -17,6 +17,15 @@
    11.  Empty Search Recovery (search results)
    12.  Accessibility Fixes (focus outlines, contrast)
    13.  Ecwid SPA Page Hooks — NEW: re-fires features on SPA navigation
+
+   v2.6 CHANGELOG:
+   - FIX: isSoldOutState() was checking three selectors that don't exist
+     on our Ecwid theme (.details-product-purchase__out-of-stock, etc).
+     Replaced with single proven selector: .product-details__product-soldout
+     Ecwid adds/removes this node on variant change — existence check only.
+   - FIX: findFirstValidOption() now skips Ecwid's "Please choose"
+     placeholder (value="Please choose", not empty) to avoid selecting
+     a non-purchasable option.
 
    v2.5 CHANGELOG:
    - REWRITE: initDefaultVariantFix (Section 8) — complete rewrite
@@ -428,15 +437,9 @@
     function ts() { return new Date().getTime(); }
 
     function isSoldOutState() {
-      var badge =
-        document.querySelector('.details-product-purchase__out-of-stock') ||
-        document.querySelector('[data-testid*="outOfStock"]') ||
-        document.querySelector('.ecwid-productBrowser-details-inStockLabel-outOfStock');
-      var btn =
-        document.querySelector('.details-product-purchase__button') ||
-        document.querySelector('button[data-testid="addToBagButton"]');
-      var disabled = !!(btn && (btn.disabled || btn.getAttribute('aria-disabled') === 'true'));
-      return !!badge || disabled;
+      // Ecwid adds/removes this node based on selected variant stock.
+      // Existence-based check — no visibility logic needed.
+      return !!document.querySelector('.product-details__product-soldout');
     }
 
     function getSelects() {
@@ -455,6 +458,7 @@
         var opt = options[i];
         var v = (opt.value || '').trim();
         if (!v || v === '0') continue;
+        if (v.toLowerCase().indexOf('choose') !== -1) continue; // Ecwid placeholder: value="Please choose"
         if (opt.disabled) continue;
         if (optionLooksSoldOut(opt)) continue;
         return opt;
