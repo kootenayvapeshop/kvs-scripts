@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v2.1
+   KVS — Site Scripts v2.3
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -11,12 +11,23 @@
     5.  Mailchimp Popup (mc.js loader)
     6.  "We Ship To" footer bar (province links)
     7.  Shipping Eligibility Guard (cart/checkout banner) — UPDATED: repositioned above cart
-    8.  Sold-Out Variant Auto-Selection (product pages) — UPDATED: label-based detection, SPA-aware
+    8.  Default Variant Fix (works with Ecwid sold-out-hider app)
     9.  Sticky Add-to-Cart Bar (mobile product pages)
    10.  Shipping Estimate Note (cart page)
    11.  Empty Search Recovery (search results)
    12.  Accessibility Fixes (focus outlines, contrast)
    13.  Ecwid SPA Page Hooks — NEW: re-fires features on SPA navigation
+
+   v2.3 CHANGELOG:
+   - NEW: initDefaultVariantFix (Section 8) — lightweight companion to
+     the Ecwid app that hides sold-out variants. The app removes sold-out
+     options from the dropdown, but the page still loads with the hidden
+     option selected (showing "Sold Out"). This function simply selects
+     the first visible in-stock option so customers see "Add to Bag".
+
+   v2.2 CHANGELOG:
+   - REMOVED: initVariantAutoSelect (Section 8) — replaced by Ecwid app
+     that hides out-of-stock variants entirely. Better UX than auto-selecting.
 
    v2.1 CHANGELOG:
    - FIX: Trust badges, stock badges, variant auto-select, and sticky ATC
@@ -355,31 +366,22 @@
     }, 500);
     setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
-
   /* ──────────────────────────────────────
-     8. SOLD-OUT VARIANT AUTO-SELECTION (v2.1)
-     If the default variant is sold out,
-     auto-selects the first in-stock variant.
-
-     v2.1 CHANGES:
-     - Uses Ecwid's "- Sold out" option label
-       text for faster, more reliable detection
-       (no need to wait for stock text to update)
-     - Checks second dropdown (Strength) after
-       switching first dropdown (Flavour)
-     - Skips "Please choose" placeholder options
-     - Re-fires on SPA navigation via hook
+     8. DEFAULT VARIANT FIX (v2.3)
+     Works with Ecwid app that hides sold-out
+     variant options. If the page loads with a
+     hidden (sold-out) option still selected,
+     this switches to the first visible option
+     so customers see an in-stock variant and
+     the "Add to Bag" button instead of "Sold Out".
      ────────────────────────────────────── */
 
-  function initVariantAutoSelect() {
+  function initDefaultVariantFix() {
     var attempts = 0;
-    var maxAttempts = 30;
-
     var checkInterval = setInterval(function() {
       attempts++;
-      if (attempts > maxAttempts) { clearInterval(checkInterval); return; }
+      if (attempts > 40) { clearInterval(checkInterval); return; }
 
-      // Find variant dropdowns
       var selects = document.querySelectorAll(
         '.product-details__product-options select, ' +
         '.details-product-options select, ' +
@@ -387,54 +389,34 @@
       );
       if (selects.length === 0) return;
 
-      // Check if current selection is sold out
-      // Method 1: The selected option label contains "- Sold out"
-      var primarySelect = selects[0];
-      var selectedOption = primarySelect.options[primarySelect.selectedIndex];
-      var isSoldOutLabel = selectedOption && /sold out/i.test(selectedOption.text);
+      var sel = selects[0];
+      var current = sel.options[sel.selectedIndex];
+      if (!current) return;
 
-      // Method 2: Stock text says "out of stock" or "sold out"
-      var stockEl = document.querySelector('.details-product-purchase__place span');
-      var isSoldOutText = stockEl && /out of stock|sold out/i.test(stockEl.textContent);
+      // Check if the current selection is hidden (app hid it) or says "Sold out"
+      var isHidden = current.style.display === 'none' || current.hidden;
+      var isSoldOut = /sold out/i.test(current.text);
+      var isPlaceholder = /please choose/i.test(current.text);
 
-      if (!isSoldOutLabel && !isSoldOutText) return; // Current variant is in stock
-
-      clearInterval(checkInterval);
-
-      // Find the first in-stock option in the primary dropdown
-      var options = primarySelect.options;
-
-      for (var i = 0; i < options.length; i++) {
-        if (i === primarySelect.selectedIndex) continue; // Skip current
-        if (/sold out/i.test(options[i].text)) continue; // Skip sold-out options
-        if (/please choose/i.test(options[i].text)) continue; // Skip placeholder
-
-        // This option doesn't say "Sold out" — select it
-        primarySelect.selectedIndex = i;
-        primarySelect.dispatchEvent(new Event('change', { bubbles: true }));
-
-        // After selecting a new flavour, check if strength also needs adjustment
-        if (selects.length > 1) {
-          setTimeout(function() {
-            var secondSelect = selects[1];
-            var secondSelected = secondSelect.options[secondSelect.selectedIndex];
-            if (secondSelected && /sold out/i.test(secondSelected.text)) {
-              for (var j = 0; j < secondSelect.options.length; j++) {
-                if (j === secondSelect.selectedIndex) continue;
-                if (!/sold out/i.test(secondSelect.options[j].text)) {
-                  secondSelect.selectedIndex = j;
-                  secondSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                  break;
-                }
-              }
-            }
-          }, 800);
-        }
-
-        return; // Done — found an in-stock variant
+      if (!isHidden && !isSoldOut && !isPlaceholder) {
+        // Current variant is fine — nothing to do
+        clearInterval(checkInterval);
+        return;
       }
-      // If we get here, ALL variants are sold out — nothing we can do
-    }, 600);
+
+      // Pick the first visible, non-placeholder option
+      for (var i = 0; i < sel.options.length; i++) {
+        var opt = sel.options[i];
+        if (opt.style.display === 'none' || opt.hidden) continue;
+        if (/please choose/i.test(opt.text)) continue;
+        if (/sold out/i.test(opt.text)) continue;
+
+        sel.selectedIndex = i;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        clearInterval(checkInterval);
+        return;
+      }
+    }, 500);
     setTimeout(function() { clearInterval(checkInterval); }, 20000);
   }
 
@@ -695,7 +677,7 @@
         // Re-fire all product-page features
         initTrustBadges();
         initStockBadges();
-        initVariantAutoSelect();
+        initDefaultVariantFix();
         initStickyATC();
       }
 
@@ -725,8 +707,8 @@
       initMailchimp();
       initShippingBar();
       initShippingGuard();
-      initVariantAutoSelect();
       initStickyATC();
+      initDefaultVariantFix();
       initShippingEstimate();
       initSearchRecovery();
       initEcwidPageHooks();
@@ -738,8 +720,8 @@
     initMailchimp();
     initShippingBar();
     initShippingGuard();
-    initVariantAutoSelect();
     initStickyATC();
+    initDefaultVariantFix();
     initShippingEstimate();
     initSearchRecovery();
     initEcwidPageHooks();
