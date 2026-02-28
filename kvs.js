@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v2.3
+   KVS — Site Scripts v2.4
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -18,13 +18,15 @@
    12.  Accessibility Fixes (focus outlines, contrast)
    13.  Ecwid SPA Page Hooks — NEW: re-fires features on SPA navigation
 
-   v2.3 CHANGELOG:
-   - NEW: initDefaultVariantFix (Section 8) — lightweight companion to
-     Ecwid app that hides sold-out variants. The app removes sold-out
-     options but Ecwid still loads with the hidden option selected,
-     showing "Sold Out". This silently sets selectedIndex to the first
-     visible in-stock option. Does NOT dispatch change events to avoid
-     conflicting with the app. Starts after 2s delay to let app finish.
+   v2.4 CHANGELOG:
+   - NEW: initDefaultVariantFix (Section 8) — companion to Ecwid app
+     that hides sold-out variant options. When Ecwid loads with a
+     sold-out variant selected, it hides the entire options container
+     and shows "Sold Out". This function: (1) sets selectedIndex to
+     first in-stock option, (2) dispatches change event so Ecwid
+     updates UI, (3) force-unhides the options container. Runs after
+     2s delay to let Ecwid + app finish rendering. Also checks second
+     dropdown (Strength) if first (Flavour) was switched.
 
    v2.2 CHANGELOG:
    - REMOVED: initVariantAutoSelect (Section 8) — replaced by Ecwid app
@@ -369,31 +371,32 @@
   }
 
   /* ──────────────────────────────────────
-     8. DEFAULT VARIANT FIX (v2.3)
+     8. DEFAULT VARIANT FIX (v2.4)
      Works alongside Ecwid app that hides
      sold-out variant options from dropdowns.
 
-     Problem: Ecwid still loads with the
-     original default variant selected, even
-     if that option is now hidden by the app.
-     This shows "Sold Out" until user interacts.
+     Problem: Ecwid loads with the first
+     alphabetical variant selected. If that
+     variant is sold out, Ecwid hides the
+     entire options container and shows a
+     "Sold Out" badge — even when other
+     variants are in stock.
 
-     Fix: After a delay (letting the app finish),
-     checks if the selected option is sold-out
-     or hidden, and silently switches to the
-     first valid option. Does NOT dispatch a
-     change event to avoid conflicting with
-     the app's event listeners.
+     Fix (3 steps, all required):
+     1. Set selectedIndex to first in-stock option
+     2. Dispatch change event so Ecwid updates
+        its UI (price, image, stock, ATC button)
+     3. Force-unhide the options container
      ────────────────────────────────────── */
 
   function initDefaultVariantFix() {
-    // Delay start to let the sold-out-hider app finish first
     setTimeout(function() {
       var attempts = 0;
       var checkInterval = setInterval(function() {
         attempts++;
-        if (attempts > 20) { clearInterval(checkInterval); return; }
+        if (attempts > 25) { clearInterval(checkInterval); return; }
 
+        // Find variant dropdowns
         var selects = document.querySelectorAll(
           '.product-details__product-options select, ' +
           '.details-product-options select, ' +
@@ -405,30 +408,59 @@
         var current = sel.options[sel.selectedIndex];
         if (!current) return;
 
-        // Check if current selection needs fixing
-        var needsFix = current.hidden
-          || current.style.display === 'none'
-          || /sold out/i.test(current.text)
-          || /please choose/i.test(current.text);
-
+        // Only act if current selection is sold out or placeholder
+        var needsFix = /sold out/i.test(current.text) || /please choose/i.test(current.text);
         if (!needsFix) {
           clearInterval(checkInterval);
-          return; // Current variant is fine
+          return; // Current variant is in stock — leave it alone
         }
 
-        // Pick the first visible, in-stock option (no event dispatch)
+        // Find first in-stock option
+        var found = false;
         for (var i = 0; i < sel.options.length; i++) {
-          var opt = sel.options[i];
-          if (opt.hidden || opt.style.display === 'none') continue;
-          if (/please choose/i.test(opt.text)) continue;
-          if (/sold out/i.test(opt.text)) continue;
+          if (/please choose/i.test(sel.options[i].text)) continue;
+          if (/sold out/i.test(sel.options[i].text)) continue;
+          if (sel.options[i].hidden || sel.options[i].style.display === 'none') continue;
+
+          // Step 1: Select the in-stock option
           sel.selectedIndex = i;
-          clearInterval(checkInterval);
-          return;
+
+          // Step 2: Tell Ecwid so it updates UI (price, image, stock, ATC)
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+
+          found = true;
+          break;
         }
+
+        if (found) {
+          // Step 3: Unhide the options container (Ecwid hides it when sold-out variant is default)
+          var container = sel.closest('.product-details__product-options, .details-product-options');
+          if (container) {
+            container.style.setProperty('display', 'block', 'important');
+          }
+
+          // Also check second dropdown (e.g., Strength)
+          if (selects.length > 1) {
+            setTimeout(function() {
+              var sel2 = selects[1];
+              var cur2 = sel2.options[sel2.selectedIndex];
+              if (cur2 && /sold out/i.test(cur2.text)) {
+                for (var j = 0; j < sel2.options.length; j++) {
+                  if (/sold out/i.test(sel2.options[j].text)) continue;
+                  if (/please choose/i.test(sel2.options[j].text)) continue;
+                  sel2.selectedIndex = j;
+                  sel2.dispatchEvent(new Event('change', { bubbles: true }));
+                  break;
+                }
+              }
+            }, 800);
+          }
+        }
+
+        clearInterval(checkInterval);
       }, 500);
       setTimeout(function() { clearInterval(checkInterval); }, 15000);
-    }, 2000); // 2s delay for app to finish
+    }, 2000); // 2s delay — let Ecwid + app finish rendering first
   }
 
   /* ──────────────────────────────────────
