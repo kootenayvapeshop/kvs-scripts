@@ -20,10 +20,11 @@
 
    v2.3 CHANGELOG:
    - NEW: initDefaultVariantFix (Section 8) — lightweight companion to
-     the Ecwid app that hides sold-out variants. The app removes sold-out
-     options from the dropdown, but the page still loads with the hidden
-     option selected (showing "Sold Out"). This function simply selects
-     the first visible in-stock option so customers see "Add to Bag".
+     Ecwid app that hides sold-out variants. The app removes sold-out
+     options but Ecwid still loads with the hidden option selected,
+     showing "Sold Out". This silently sets selectedIndex to the first
+     visible in-stock option. Does NOT dispatch change events to avoid
+     conflicting with the app. Starts after 2s delay to let app finish.
 
    v2.2 CHANGELOG:
    - REMOVED: initVariantAutoSelect (Section 8) — replaced by Ecwid app
@@ -366,58 +367,68 @@
     }, 500);
     setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
+
   /* ──────────────────────────────────────
      8. DEFAULT VARIANT FIX (v2.3)
-     Works with Ecwid app that hides sold-out
-     variant options. If the page loads with a
-     hidden (sold-out) option still selected,
-     this switches to the first visible option
-     so customers see an in-stock variant and
-     the "Add to Bag" button instead of "Sold Out".
+     Works alongside Ecwid app that hides
+     sold-out variant options from dropdowns.
+
+     Problem: Ecwid still loads with the
+     original default variant selected, even
+     if that option is now hidden by the app.
+     This shows "Sold Out" until user interacts.
+
+     Fix: After a delay (letting the app finish),
+     checks if the selected option is sold-out
+     or hidden, and silently switches to the
+     first valid option. Does NOT dispatch a
+     change event to avoid conflicting with
+     the app's event listeners.
      ────────────────────────────────────── */
 
   function initDefaultVariantFix() {
-    var attempts = 0;
-    var checkInterval = setInterval(function() {
-      attempts++;
-      if (attempts > 40) { clearInterval(checkInterval); return; }
+    // Delay start to let the sold-out-hider app finish first
+    setTimeout(function() {
+      var attempts = 0;
+      var checkInterval = setInterval(function() {
+        attempts++;
+        if (attempts > 20) { clearInterval(checkInterval); return; }
 
-      var selects = document.querySelectorAll(
-        '.product-details__product-options select, ' +
-        '.details-product-options select, ' +
-        '.product-details-module select'
-      );
-      if (selects.length === 0) return;
+        var selects = document.querySelectorAll(
+          '.product-details__product-options select, ' +
+          '.details-product-options select, ' +
+          '.product-details-module select'
+        );
+        if (selects.length === 0) return;
 
-      var sel = selects[0];
-      var current = sel.options[sel.selectedIndex];
-      if (!current) return;
+        var sel = selects[0];
+        var current = sel.options[sel.selectedIndex];
+        if (!current) return;
 
-      // Check if the current selection is hidden (app hid it) or says "Sold out"
-      var isHidden = current.style.display === 'none' || current.hidden;
-      var isSoldOut = /sold out/i.test(current.text);
-      var isPlaceholder = /please choose/i.test(current.text);
+        // Check if current selection needs fixing
+        var needsFix = current.hidden
+          || current.style.display === 'none'
+          || /sold out/i.test(current.text)
+          || /please choose/i.test(current.text);
 
-      if (!isHidden && !isSoldOut && !isPlaceholder) {
-        // Current variant is fine — nothing to do
-        clearInterval(checkInterval);
-        return;
-      }
+        if (!needsFix) {
+          clearInterval(checkInterval);
+          return; // Current variant is fine
+        }
 
-      // Pick the first visible, non-placeholder option
-      for (var i = 0; i < sel.options.length; i++) {
-        var opt = sel.options[i];
-        if (opt.style.display === 'none' || opt.hidden) continue;
-        if (/please choose/i.test(opt.text)) continue;
-        if (/sold out/i.test(opt.text)) continue;
-
-        sel.selectedIndex = i;
-        sel.dispatchEvent(new Event('change', { bubbles: true }));
-        clearInterval(checkInterval);
-        return;
-      }
-    }, 500);
-    setTimeout(function() { clearInterval(checkInterval); }, 20000);
+        // Pick the first visible, in-stock option (no event dispatch)
+        for (var i = 0; i < sel.options.length; i++) {
+          var opt = sel.options[i];
+          if (opt.hidden || opt.style.display === 'none') continue;
+          if (/please choose/i.test(opt.text)) continue;
+          if (/sold out/i.test(opt.text)) continue;
+          sel.selectedIndex = i;
+          clearInterval(checkInterval);
+          return;
+        }
+      }, 500);
+      setTimeout(function() { clearInterval(checkInterval); }, 15000);
+    }, 2000); // 2s delay for app to finish
   }
 
   /* ──────────────────────────────────────
