@@ -1,21 +1,32 @@
 /* ============================================================
-   KVS — Site Scripts v2.0
+   KVS — Site Scripts v2.1
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
    Contains:
     1.  Age Verification Gate (19+ requirement)
-    2.  Stock Urgency Badges (product pages)
-    3.  Trust Badges (product pages) — UPDATED: more robust selector
+    2.  Stock Urgency Badges (product pages) — UPDATED: SPA-aware
+    3.  Trust Badges (product pages) — UPDATED: SPA-aware, stale cleanup
     4.  Google Tag Manager (noscript fallback injected)
     5.  Mailchimp Popup (mc.js loader)
     6.  "We Ship To" footer bar (province links)
     7.  Shipping Eligibility Guard (cart/checkout banner) — UPDATED: repositioned above cart
-    8.  Sold-Out Variant Auto-Selection (product pages) — NEW
-    9.  Sticky Add-to-Cart Bar (mobile product pages) — NEW
-   10.  Shipping Estimate Note (cart page) — NEW
-   11.  Empty Search Recovery (search results) — NEW
-   12.  Accessibility Fixes (focus outlines, contrast) — NEW
+    8.  Sold-Out Variant Auto-Selection (product pages) — UPDATED: label-based detection, SPA-aware
+    9.  Sticky Add-to-Cart Bar (mobile product pages)
+   10.  Shipping Estimate Note (cart page)
+   11.  Empty Search Recovery (search results)
+   12.  Accessibility Fixes (focus outlines, contrast)
+   13.  Ecwid SPA Page Hooks — NEW: re-fires features on SPA navigation
+
+   v2.1 CHANGELOG:
+   - FIX: Trust badges, stock badges, variant auto-select, and sticky ATC
+     now re-fire on Ecwid SPA navigation (category → product clicks).
+     Root cause: Ecwid uses SPA routing, so DOMContentLoaded only fires once.
+   - FIX: Variant auto-select uses Ecwid's "- Sold out" option labels
+     instead of waiting for stock text to update (faster, more reliable).
+   - FIX: Trust badges remove stale badges before re-injecting on new product.
+   - FIX: Variant auto-select also checks second dropdown (Strength) after
+     switching the first dropdown (Flavour).
    ============================================================ */
 
 (function() {
@@ -107,12 +118,13 @@
     });
   }
 
-
   /* ──────────────────────────────────────
-     2. STOCK URGENCY BADGES
+     2. STOCK URGENCY BADGES (v2.1)
      Rewrites "In stock: X available" text
      with color-coded urgency messaging.
      CSS classes defined in Custom CSS.
+     v2.1: Re-fires on SPA navigation via
+     Ecwid.OnPageLoaded hook.
      ────────────────────────────────────── */
 
   function initStockBadges() {
@@ -136,24 +148,25 @@
         stockEl.className += ' kvs-in-stock';
         stockEl.textContent = '\u2713 In stock — ' + qty + ' available';
       }
-    }, 800);
-
-    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+    }, 500);
+    setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
 
-
   /* ──────────────────────────────────────
-     3. TRUST BADGES (UPDATED v2.0)
+     3. TRUST BADGES (v2.1)
      Injects trust indicators below the
      Add to Bag button on product pages.
-
-     v2.0 FIX: Uses multiple fallback
-     selectors to match all Ecwid product
-     page layouts. Previously failed on
-     some PDPs (e.g. Flavour Beast FURY).
+     v2.1 FIX: Removes stale badges from
+     previous product on SPA navigation
+     before re-injecting. Re-fires via
+     Ecwid.OnPageLoaded hook.
      ────────────────────────────────────── */
 
   function initTrustBadges() {
+    // v2.1: Remove stale badges from previous product (SPA navigation)
+    var old = document.querySelector('.kvs-trust-badges');
+    if (old) old.remove();
+
     var checkInterval = setInterval(function() {
       // Don't double-inject
       if (document.querySelector('.kvs-trust-badges')) {
@@ -167,10 +180,7 @@
       var selectors = [
         '.details-product-purchase__add-to-bag',
         '.details-product-purchase',
-        '.product-details__product-purchase',
-        '.details-product-purchase__buttons',
         '[class*="product-purchase"]',
-        '.ec-product-page .form-control--button--add-to-bag',
         '.product-details-module'
       ];
 
@@ -190,7 +200,6 @@
       }
 
       if (!purchaseArea) return;
-
       clearInterval(checkInterval);
 
       var badges = document.createElement('div');
@@ -208,11 +217,9 @@
       } else {
         purchaseArea.parentNode.appendChild(badges);
       }
-    }, 800);
-
-    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+    }, 500);
+    setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
-
 
   /* ──────────────────────────────────────
      4. GTM NOSCRIPT FALLBACK
@@ -230,7 +237,6 @@
     document.body.insertBefore(noscript, document.body.firstChild);
   }
 
-
   /* ──────────────────────────────────────
      5. MAILCHIMP POPUP (mc.js)
      ────────────────────────────────────── */
@@ -238,7 +244,6 @@
   function initMailchimp() {
     !function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/967dfb1988c0dce580a3462f1/27a7a21cddeb06fe4c455de67.js");
   }
-
 
   /* ──────────────────────────────────────
      6. "WE SHIP TO" FOOTER BAR
@@ -289,9 +294,8 @@
     }
   }
 
-
   /* ──────────────────────────────────────
-     7. SHIPPING ELIGIBILITY GUARD (UPDATED v2.0)
+     7. SHIPPING ELIGIBILITY GUARD (v2.0)
      Shows a banner on cart/checkout pages.
      v2.0: Inserts ABOVE cart area.
      ────────────────────────────────────── */
@@ -301,6 +305,9 @@
     var isCartPage = href.indexOf('/cart') !== -1 || href.indexOf('#!/~/cart') !== -1;
     var isCheckout = href.indexOf('/checkout') !== -1 || href.indexOf('#!/~/checkout') !== -1;
     if (!isCartPage && !isCheckout) return;
+
+    // Don't duplicate
+    if (document.getElementById('kvs-shipping-banner')) return;
 
     try {
       if (sessionStorage.getItem('kvs_shipping_banner_dismissed')) return;
@@ -346,32 +353,31 @@
         try { sessionStorage.setItem('kvs_shipping_banner_dismissed', '1'); } catch (e) {}
       });
     }, 500);
-
     setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
 
-
   /* ──────────────────────────────────────
-     8. SOLD-OUT VARIANT AUTO-SELECTION (NEW)
+     8. SOLD-OUT VARIANT AUTO-SELECTION (v2.1)
      If the default variant is sold out,
      auto-selects the first in-stock variant.
+
+     v2.1 CHANGES:
+     - Uses Ecwid's "- Sold out" option label
+       text for faster, more reliable detection
+       (no need to wait for stock text to update)
+     - Checks second dropdown (Strength) after
+       switching first dropdown (Flavour)
+     - Skips "Please choose" placeholder options
+     - Re-fires on SPA navigation via hook
      ────────────────────────────────────── */
 
   function initVariantAutoSelect() {
     var attempts = 0;
-    var maxAttempts = 40;
+    var maxAttempts = 30;
 
     var checkInterval = setInterval(function() {
       attempts++;
       if (attempts > maxAttempts) { clearInterval(checkInterval); return; }
-
-      // Check if current variant is sold out
-      var soldOut = false;
-      var stockEl = document.querySelector('.details-product-purchase__place span');
-      if (stockEl && /out of stock|sold out/i.test(stockEl.textContent)) {
-        soldOut = true;
-      }
-      if (!soldOut) return;
 
       // Find variant dropdowns
       var selects = document.querySelectorAll(
@@ -380,38 +386,60 @@
         '.product-details-module select'
       );
       if (selects.length === 0) return;
+
+      // Check if current selection is sold out
+      // Method 1: The selected option label contains "- Sold out"
+      var primarySelect = selects[0];
+      var selectedOption = primarySelect.options[primarySelect.selectedIndex];
+      var isSoldOutLabel = selectedOption && /sold out/i.test(selectedOption.text);
+
+      // Method 2: Stock text says "out of stock" or "sold out"
+      var stockEl = document.querySelector('.details-product-purchase__place span');
+      var isSoldOutText = stockEl && /out of stock|sold out/i.test(stockEl.textContent);
+
+      if (!isSoldOutLabel && !isSoldOutText) return; // Current variant is in stock
+
       clearInterval(checkInterval);
 
-      var primarySelect = selects[0];
-      var options = primarySelect.querySelectorAll('option');
-      var currentIndex = primarySelect.selectedIndex;
+      // Find the first in-stock option in the primary dropdown
+      var options = primarySelect.options;
 
-      function tryNextOption(index) {
-        if (index >= options.length) return;
-        if (index === currentIndex) { tryNextOption(index + 1); return; }
+      for (var i = 0; i < options.length; i++) {
+        if (i === primarySelect.selectedIndex) continue; // Skip current
+        if (/sold out/i.test(options[i].text)) continue; // Skip sold-out options
+        if (/please choose/i.test(options[i].text)) continue; // Skip placeholder
 
-        primarySelect.selectedIndex = index;
+        // This option doesn't say "Sold out" — select it
+        primarySelect.selectedIndex = i;
         primarySelect.dispatchEvent(new Event('change', { bubbles: true }));
 
-        setTimeout(function() {
-          var newStockEl = document.querySelector('.details-product-purchase__place span');
-          if (!newStockEl) { tryNextOption(index + 1); return; }
+        // After selecting a new flavour, check if strength also needs adjustment
+        if (selects.length > 1) {
+          setTimeout(function() {
+            var secondSelect = selects[1];
+            var secondSelected = secondSelect.options[secondSelect.selectedIndex];
+            if (secondSelected && /sold out/i.test(secondSelected.text)) {
+              for (var j = 0; j < secondSelect.options.length; j++) {
+                if (j === secondSelect.selectedIndex) continue;
+                if (!/sold out/i.test(secondSelect.options[j].text)) {
+                  secondSelect.selectedIndex = j;
+                  secondSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                  break;
+                }
+              }
+            }
+          }, 800);
+        }
 
-          var text = newStockEl.textContent.trim().toLowerCase();
-          if (text.indexOf('out of stock') !== -1 || text.indexOf('sold out') !== -1) {
-            tryNextOption(index + 1);
-          }
-          // Found in-stock variant — stop
-        }, 600);
+        return; // Done — found an in-stock variant
       }
-
-      tryNextOption(0);
-    }, 750);
+      // If we get here, ALL variants are sold out — nothing we can do
+    }, 600);
+    setTimeout(function() { clearInterval(checkInterval); }, 20000);
   }
 
-
   /* ──────────────────────────────────────
-     9. STICKY ADD-TO-CART BAR — MOBILE (NEW)
+     9. STICKY ADD-TO-CART BAR — MOBILE
      Fixed bottom bar with price + ATC
      when native button scrolls out of view.
      Only activates on viewports < 768px.
@@ -419,6 +447,10 @@
 
   function initStickyATC() {
     if (window.innerWidth >= 768) return;
+
+    // v2.1: Don't duplicate on SPA navigation
+    var existing = document.getElementById('kvs-sticky-atc');
+    if (existing) existing.remove();
 
     var style = document.createElement('style');
     style.textContent = [
@@ -511,9 +543,8 @@
     }, 750);
   }
 
-
   /* ──────────────────────────────────────
-     10. SHIPPING ESTIMATE NOTE — CART (NEW)
+     10. SHIPPING ESTIMATE NOTE — CART
      "Shipping calculated at checkout" note
      near the subtotal to reduce abandonment.
      ────────────────────────────────────── */
@@ -521,6 +552,9 @@
   function initShippingEstimate() {
     var href = window.location.href;
     if (href.indexOf('/cart') === -1 && href.indexOf('#!/~/cart') === -1) return;
+
+    // Don't duplicate
+    if (document.getElementById('kvs-shipping-note')) return;
 
     var style = document.createElement('style');
     style.textContent = [
@@ -542,6 +576,7 @@
         if (subtotalEl) summaryArea = subtotalEl.parentElement;
       }
       if (!summaryArea) return;
+
       clearInterval(checkInterval);
 
       var note = document.createElement('div');
@@ -557,19 +592,20 @@
         summaryArea.appendChild(note);
       }
     }, 800);
-
     setTimeout(function() { clearInterval(checkInterval); }, 15000);
   }
 
-
   /* ──────────────────────────────────────
-     11. EMPTY SEARCH RECOVERY (NEW)
+     11. EMPTY SEARCH RECOVERY
      When search returns zero results, injects
      links to popular categories.
      ────────────────────────────────────── */
 
   function initSearchRecovery() {
     if (window.location.href.indexOf('/search') === -1) return;
+
+    // Don't duplicate
+    if (document.getElementById('kvs-search-recovery')) return;
 
     var style = document.createElement('style');
     style.textContent = [
@@ -585,11 +621,9 @@
     var checkInterval = setInterval(function() {
       if (document.getElementById('kvs-search-recovery')) { clearInterval(checkInterval); return; }
 
-      // Detect zero-results state
       var noResults = document.querySelector('.ec-search--no-results') ||
                       document.querySelector('[class*="search--no-results"]') ||
                       document.querySelector('.grid__no-products-found');
-
       if (!noResults) {
         var breadcrumb = document.querySelector('.ec-breadcrumbs');
         if (breadcrumb && /no matches/i.test(breadcrumb.textContent)) {
@@ -597,6 +631,7 @@
         }
       }
       if (!noResults) return;
+
       clearInterval(checkInterval);
 
       var recovery = document.createElement('div');
@@ -616,13 +651,11 @@
 
       noResults.parentNode.insertBefore(recovery, noResults.nextSibling);
     }, 1000);
-
     setTimeout(function() { clearInterval(checkInterval); }, 20000);
   }
 
-
   /* ──────────────────────────────────────
-     12. ACCESSIBILITY FIXES (NEW)
+     12. ACCESSIBILITY FIXES
      Restores focus outlines and improves
      contrast. WCAG 2.4.7 + 1.4.3.
      ────────────────────────────────────── */
@@ -637,6 +670,45 @@
     document.head.appendChild(style);
   }
 
+  /* ──────────────────────────────────────
+     13. ECWID SPA PAGE HOOKS (NEW v2.1)
+     Ecwid uses SPA-style navigation —
+     clicking from category → product doesn't
+     trigger a full page reload. This hook
+     listens for Ecwid page changes and
+     re-fires product-page features.
+     ────────────────────────────────────── */
+
+  function initEcwidPageHooks() {
+    if (typeof Ecwid === 'undefined' || !Ecwid.OnPageLoaded) {
+      // Ecwid not loaded yet — retry up to 10 seconds
+      if (!initEcwidPageHooks._retries) initEcwidPageHooks._retries = 0;
+      initEcwidPageHooks._retries++;
+      if (initEcwidPageHooks._retries < 20) {
+        setTimeout(initEcwidPageHooks, 500);
+      }
+      return;
+    }
+
+    Ecwid.OnPageLoaded.add(function(page) {
+      if (page.type === 'PRODUCT') {
+        // Re-fire all product-page features
+        initTrustBadges();
+        initStockBadges();
+        initVariantAutoSelect();
+        initStickyATC();
+      }
+
+      if (page.type === 'CART') {
+        initShippingGuard();
+        initShippingEstimate();
+      }
+
+      if (page.type === 'SEARCH') {
+        initSearchRecovery();
+      }
+    });
+  }
 
   /* ──────────────────────────────────────
      INIT — Run everything
@@ -657,6 +729,7 @@
       initStickyATC();
       initShippingEstimate();
       initSearchRecovery();
+      initEcwidPageHooks();
     });
   } else {
     initStockBadges();
@@ -669,6 +742,7 @@
     initStickyATC();
     initShippingEstimate();
     initSearchRecovery();
+    initEcwidPageHooks();
   }
 
 })();
