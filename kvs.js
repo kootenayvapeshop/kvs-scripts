@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v2.4
+   KVS — Site Scripts v2.5
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -18,15 +18,20 @@
    12.  Accessibility Fixes (focus outlines, contrast)
    13.  Ecwid SPA Page Hooks — NEW: re-fires features on SPA navigation
 
+   v2.5 CHANGELOG:
+   - REWRITE: initDefaultVariantFix (Section 8) — complete rewrite
+     merging Claude + GPT approaches. Now detects sold-out state via
+     actual DOM badges/disabled buttons instead of just option text.
+     Selects in-stock variant FIRST (while hidden), then unhides
+     container only after confirming state is valid. Handles Flavour
+     + Strength sequentially with delay for Ecwid recalculation.
+     Single lightweight retry loop with overlap guard. Only unhides
+     if in-stock path exists — truly sold-out products stay as-is.
+
    v2.4 CHANGELOG:
-   - NEW: initDefaultVariantFix (Section 8) — companion to Ecwid app
-     that hides sold-out variant options. When Ecwid loads with a
-     sold-out variant selected, it hides the entire options container
-     and shows "Sold Out". This function: (1) sets selectedIndex to
-     first in-stock option, (2) dispatches change event so Ecwid
-     updates UI, (3) force-unhides the options container. Runs after
-     2s delay to let Ecwid + app finish rendering. Also checks second
-     dropdown (Strength) if first (Flavour) was switched.
+   - NEW: initDefaultVariantFix (Section 8) — companion to Ecwid app.
+     Three-step fix: select in-stock option, dispatch change, unhide
+     container. Replaced by v2.5 rewrite.
 
    v2.2 CHANGELOG:
    - REMOVED: initVariantAutoSelect (Section 8) — replaced by Ecwid app
@@ -371,7 +376,7 @@
   }
 
   /* ──────────────────────────────────────
-     8. DEFAULT VARIANT FIX (v2.4)
+     8. DEFAULT VARIANT FIX (v2.5)
      Works alongside Ecwid app that hides
      sold-out variant options from dropdowns.
 
@@ -382,85 +387,153 @@
      "Sold Out" badge — even when other
      variants are in stock.
 
-     Fix (3 steps, all required):
-     1. Set selectedIndex to first in-stock option
-     2. Dispatch change event so Ecwid updates
-        its UI (price, image, stock, ATC button)
-     3. Force-unhide the options container
+     Detection: Checks Ecwid's actual DOM
+     for sold-out badge / disabled ATC button
+     rather than just option text.
+
+     Fix (3 steps, order matters):
+     1. Select first in-stock option (while
+        container is still hidden)
+     2. Dispatch change so Ecwid updates UI
+     3. Only THEN unhide the options container
+        (so user never sees "Sold out" flash)
+
+     Only unhides if an in-stock option exists.
+     If product is truly sold out, leaves the
+     "Sold Out" badge alone — doesn't show
+     empty dropdowns.
+
+     Handles multiple dropdowns (Flavour →
+     Strength) sequentially with delay so
+     Ecwid can recalculate dependent options.
+
+     Uses single lightweight retry loop with
+     guard to prevent overlapping runs on
+     SPA navigation.
      ────────────────────────────────────── */
 
+  var variantFixRunning = false;
+
   function initDefaultVariantFix() {
-    setTimeout(function() {
-      var attempts = 0;
-      var checkInterval = setInterval(function() {
-        attempts++;
-        if (attempts > 25) { clearInterval(checkInterval); return; }
+    if (variantFixRunning) return;
+    variantFixRunning = true;
 
-        // Find variant dropdowns
-        var selects = document.querySelectorAll(
-          '.product-details__product-options select, ' +
-          '.details-product-options select, ' +
-          '.product-details-module select'
-        );
-        if (selects.length === 0) return;
+    var OPTIONS_CONTAINER = '.product-details__product-options';
+    var SELECTS = OPTIONS_CONTAINER + ' select';
+    var INITIAL_DELAY = 1800;
+    var MAX_MS = 6000;
+    var INTERVAL_MS = 200;
+    var BETWEEN_SELECTS_MS = 280;
 
-        var sel = selects[0];
-        var current = sel.options[sel.selectedIndex];
-        if (!current) return;
+    function ts() { return new Date().getTime(); }
 
-        // Only act if current selection is sold out or placeholder
-        var needsFix = /sold out/i.test(current.text) || /please choose/i.test(current.text);
-        if (!needsFix) {
-          clearInterval(checkInterval);
-          return; // Current variant is in stock — leave it alone
-        }
+    function isSoldOutState() {
+      var badge =
+        document.querySelector('.details-product-purchase__out-of-stock') ||
+        document.querySelector('[data-testid*="outOfStock"]') ||
+        document.querySelector('.ecwid-productBrowser-details-inStockLabel-outOfStock');
+      var btn =
+        document.querySelector('.details-product-purchase__button') ||
+        document.querySelector('button[data-testid="addToBagButton"]');
+      var disabled = !!(btn && (btn.disabled || btn.getAttribute('aria-disabled') === 'true'));
+      return !!badge || disabled;
+    }
 
-        // Find first in-stock option
-        var found = false;
-        for (var i = 0; i < sel.options.length; i++) {
-          if (/please choose/i.test(sel.options[i].text)) continue;
-          if (/sold out/i.test(sel.options[i].text)) continue;
-          if (sel.options[i].hidden || sel.options[i].style.display === 'none') continue;
+    function getSelects() {
+      return Array.prototype.slice.call(document.querySelectorAll(SELECTS));
+    }
 
-          // Step 1: Select the in-stock option
-          sel.selectedIndex = i;
+    function optionLooksSoldOut(opt) {
+      var t = (opt && opt.textContent ? opt.textContent : '').toLowerCase();
+      return t.indexOf('sold out') !== -1 || t.indexOf('out of stock') !== -1;
+    }
 
-          // Step 2: Tell Ecwid so it updates UI (price, image, stock, ATC)
+    function findFirstValidOption(selectEl) {
+      if (!selectEl || !selectEl.options) return null;
+      var options = Array.prototype.slice.call(selectEl.options);
+      for (var i = 0; i < options.length; i++) {
+        var opt = options[i];
+        var v = (opt.value || '').trim();
+        if (!v || v === '0') continue;
+        if (opt.disabled) continue;
+        if (optionLooksSoldOut(opt)) continue;
+        return opt;
+      }
+      return null;
+    }
+
+    function hasInStockPath(selects) {
+      if (!selects || !selects.length) return false;
+      return !!findFirstValidOption(selects[0]);
+    }
+
+    function forceUnhideContainer() {
+      var container = document.querySelector(OPTIONS_CONTAINER);
+      if (!container) return;
+      container.style.setProperty('display', 'block', 'important');
+      container.style.setProperty('visibility', 'visible', 'important');
+      container.style.setProperty('opacity', '1', 'important');
+      container.style.setProperty('height', 'auto', 'important');
+      container.style.setProperty('pointer-events', 'auto', 'important');
+    }
+
+    function selectSequentially(selects, done) {
+      var idx = 0;
+      function step() {
+        if (idx >= selects.length) return done && done();
+        var sel = selects[idx];
+        var candidate = findFirstValidOption(sel);
+        if (candidate) {
+          sel.value = candidate.value;
           sel.dispatchEvent(new Event('change', { bubbles: true }));
-
-          found = true;
-          break;
         }
+        idx++;
+        setTimeout(step, BETWEEN_SELECTS_MS);
+      }
+      step();
+    }
 
-        if (found) {
-          // Step 3: Unhide the options container (Ecwid hides it when sold-out variant is default)
-          var container = sel.closest('.product-details__product-options, .details-product-options');
-          if (container) {
-            container.style.setProperty('display', 'block', 'important');
+    function fixOnce(cb) {
+      var selects = getSelects();
+      if (!selects.length) return cb('retry');
+      if (!isSoldOutState()) return cb('done');
+      if (!hasInStockPath(selects)) return cb('retry');
+
+      // Step 1+2: Select in-stock options (container still hidden)
+      selectSequentially(selects, function() {
+        // Give Ecwid time to recalculate variation state
+        setTimeout(function() {
+          if (!isSoldOutState()) {
+            // Step 3: Safe to unhide now — valid variant is selected
+            forceUnhideContainer();
+            return cb('done');
           }
-
-          // Also check second dropdown (e.g., Strength)
-          if (selects.length > 1) {
+          // Second pass — handles dependent dropdown regeneration
+          var selects2 = getSelects();
+          selectSequentially(selects2, function() {
             setTimeout(function() {
-              var sel2 = selects[1];
-              var cur2 = sel2.options[sel2.selectedIndex];
-              if (cur2 && /sold out/i.test(cur2.text)) {
-                for (var j = 0; j < sel2.options.length; j++) {
-                  if (/sold out/i.test(sel2.options[j].text)) continue;
-                  if (/please choose/i.test(sel2.options[j].text)) continue;
-                  sel2.selectedIndex = j;
-                  sel2.dispatchEvent(new Event('change', { bubbles: true }));
-                  break;
-                }
-              }
-            }, 800);
-          }
-        }
+              if (!isSoldOutState()) forceUnhideContainer();
+              cb(isSoldOutState() ? 'retry' : 'done');
+            }, 350);
+          });
+        }, 350);
+      });
+    }
 
-        clearInterval(checkInterval);
-      }, 500);
-      setTimeout(function() { clearInterval(checkInterval); }, 15000);
-    }, 2000); // 2s delay — let Ecwid + app finish rendering first
+    function runFixLoop() {
+      var start = ts();
+      function tick() {
+        fixOnce(function(status) {
+          if (status === 'done') { variantFixRunning = false; return; }
+          if (ts() - start > MAX_MS) { variantFixRunning = false; return; }
+          setTimeout(tick, INTERVAL_MS);
+        });
+      }
+      tick();
+    }
+
+    // Initial delay lets Ecwid + Hide Variations app finish rendering
+    setTimeout(runFixLoop, INITIAL_DELAY);
   }
 
   /* ──────────────────────────────────────
