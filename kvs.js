@@ -12,6 +12,7 @@
    6. BreadcrumbList Schema (JSON-LD) — content pages
    7. Organization Schema (JSON-LD) — homepage only
    8. LocalBusiness Schema (JSON-LD) — 4 location pages
+   9. WebSite + Sitelinks Search Box (JSON-LD) — homepage only
    ============================================================ */
 
 (function() {
@@ -508,6 +509,47 @@
   }
 
   /* ──────────────────────────────────────
+
+  /* ===========================================
+     SECTION 9 — WebSite + Sitelinks Search Box (JSON-LD)
+     Injects WebSite schema with SearchAction
+     on the homepage only.
+     =========================================== */
+  function initWebSiteSchema() {
+    var path = window.location.pathname;
+    if (path !== '/' && path !== '/home') return;
+    if (document.getElementById('kvs-website-jsonld')) return;
+    var existing = document.querySelectorAll('script[type="application/ld+json"]');
+    for (var i = 0; i < existing.length; i++) {
+      try {
+        var d = JSON.parse(existing[i].textContent);
+        if (d['@type'] === 'WebSite') return;
+        if (d['@graph']) {
+          for (var j = 0; j < d['@graph'].length; j++) {
+            if (d['@graph'][j]['@type'] === 'WebSite') return;
+          }
+        }
+      } catch (e) {}
+    }
+    var schema = {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': 'https://kootenayvapeshop.com/#website',
+      'url': 'https://kootenayvapeshop.com/',
+      'name': 'Kootenay Vape Shop',
+      'potentialAction': {
+        '@type': 'SearchAction',
+        'target': 'https://kootenayvapeshop.com/products/search?keyword={search_term_string}',
+        'query-input': 'required name=search_term_string'
+      }
+    };
+    var script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'kvs-website-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+    console.log('[kvs.js] WebSite schema injected');
+  }
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -525,6 +567,7 @@
       setTimeout(initBreadcrumbSchema, 2500);
       setTimeout(initOrganizationSchema, 2500);
       setTimeout(initLocalBusinessSchema, 2500);
+      setTimeout(initWebSiteSchema, 2500);
     });
   } else {
     initStockBadges();
@@ -534,6 +577,7 @@
     setTimeout(initBreadcrumbSchema, 2500);
     setTimeout(initOrganizationSchema, 2500);
     setTimeout(initLocalBusinessSchema, 2500);
+    setTimeout(initWebSiteSchema, 2500);
   }
 
 })();
