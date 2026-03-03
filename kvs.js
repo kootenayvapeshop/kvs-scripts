@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.0
+   KVS — Site Scripts v3.1
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -17,6 +17,7 @@
    11. Product Title Suffix — PDP title enrichment
    12. Category Meta Description Fix — category pages
    13. Category H1 Injection — category pages
+   14. Fix Static Schema — patch Ecwid VapeShop → Store
    ============================================================ */
 
 (function() {
@@ -647,6 +648,37 @@
   }
 
   /* ──────────────────────────────────────
+     14. FIX STATIC SCHEMA — Patch Ecwid VapeShop → Store
+  ────────────────────────────────────── */
+
+  function fixStaticSchema() {
+    if (window.location.pathname !== '/' && window.location.pathname !== '/home') return;
+    var scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    scripts.forEach(function(s) {
+      if (s.id && s.id.indexOf('kvs-') === 0) return;
+      try {
+        var data = JSON.parse(s.textContent);
+        var changed = false;
+        if (data['@graph']) {
+          data['@graph'].forEach(function(item) {
+            if (item['@type'] === 'VapeShop') {
+              item['@type'] = 'Store';
+              changed = true;
+            }
+          });
+        }
+        if (data['@type'] === 'VapeShop') {
+          data['@type'] = 'Store';
+          changed = true;
+        }
+        if (changed) {
+          s.textContent = JSON.stringify(data);
+        }
+      } catch(e) {}
+    });
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -672,6 +704,7 @@
         initWebSiteSchema();
         initProductTitleSuffix();
         initCategoryH1();
+        fixStaticSchema();
       }, 2500);
     });
   } else {
@@ -687,6 +720,7 @@
       initWebSiteSchema();
       initProductTitleSuffix();
       initCategoryH1();
+      fixStaticSchema();
     }, 2500);
   }
 
