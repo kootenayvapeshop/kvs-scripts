@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.3
+   KVS — Site Scripts v3.1.4
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -17,7 +17,9 @@
    11. Product Title Suffix — PDP title enrichment
    12. Category Meta Description Fix — category pages
    13. Category H1 Injection — category pages
-   14. Fix Static Schema — patch Ecwid VapeShop → Store
+   14. Category Links — related-category blocks on category pages
+   15. SPA Navigation Watcher — re-injects category blocks on URL change
+   16. Fix Static Schema — patch Ecwid VapeShop → Store
    ============================================================ */
 
 (function() {
@@ -608,7 +610,9 @@
       '/products/Freebase-c181457932': 'Shop freebase e-liquid from $20.99 + tax. Wide range of flavours and nicotine strengths for sub-ohm vaping. Ships to BC, SK, NS & NL.',
       '/products/Closed-Pod-Devices-c181465296': 'Shop closed pod system devices including STLTH and Vuse. Simple, easy-to-use pod vapes with fast BC-wide shipping. Low prices guaranteed.',
       '/products/Vape-Hardware-c181465792': 'Shop vape mods, pod systems, starter kits & tanks from Geekvape, Voopoo, Uwell & more. Lowest prices in BC. Ships Canada-wide.',
-      '/products/Coils-c181465794': 'Shop replacement vape coils for Geekvape, Voopoo, Uwell, SMOK & Vaporesso devices. Lowest prices in BC with fast province-wide shipping.'
+      '/products/Coils-c181465794': 'Shop replacement vape coils for Geekvape, Voopoo, Uwell, SMOK & Vaporesso devices. Lowest prices in BC with fast province-wide shipping.',
+      '/products/Open-Pod-Devices-c181465297': 'Shop refillable open pod vape systems from Uwell, Voopoo, Vaporesso & more. Compact pod devices at the lowest prices. Ships to BC, SK, NS & NL.',
+      '/products/Replacements-c181460125': 'Shop vape replacement coils, pods & parts from Voopoo, Geekvape, SMOK, Uwell & more. Lowest prices in BC with fast shipping to BC, SK, NS & NL.'
     };
     var desc = metas[path];
     if (!desc) return;
@@ -633,7 +637,9 @@
       '/products/Closed-Pod-Devices-c181465296': 'Closed Pod Devices',
       '/products/Vape-Hardware-c181465792': 'Vape Hardware',
       '/products/Coils-c181465794': 'Replacement Coils',
-      '/products/420-c181460866': '420 Accessories'
+      '/products/420-c181460866': '420 Accessories',
+      '/products/Open-Pod-Devices-c181465297': 'Open Pod Vape Systems',
+      '/products/Replacements-c181460125': 'Vape Replacement Parts & Accessories'
     };
     var text = headings[path];
     if (!text) return;
@@ -656,7 +662,10 @@
   ────────────────────────────────────── */
 
   function initCategoryLinks() {
-    if (document.getElementById('kvs-category-links')) return;
+    // Remove any existing block (handles SPA navigation between categories)
+    var existingBlock = document.getElementById('kvs-category-links');
+    if (existingBlock) existingBlock.remove();
+
     var path = window.location.pathname;
     if (path.indexOf('/products/') !== 0 || path.indexOf('-c') === -1) return;
 
@@ -672,6 +681,71 @@
           ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
           ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
           ['/products/Replacements-c181460125', 'Replacements', 'Coils, pods, glass, and parts']
+        ]
+      },
+      '/products/Salt-Nic-c181460122': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice from 0mg to 12mg'],
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use disposable vape devices'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for salt nic'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware'],
+          ['/products/Closed-Pods-c181465541', 'Closed Pods', 'Pre-filled pod cartridges and refills'],
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges for pod systems']
+        ]
+      },
+      '/products/Coils-c181465794': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Replacements-c181460125', 'Replacements', 'All replacement parts, pods, and glass'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for daily use'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems'],
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nic salt juice for pod systems'],
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice for sub-ohm setups'],
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use disposable vape devices'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware']
+        ]
+      },
+      '/products/Open-Pod-Devices-c181465297': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
+          ['/products/Replacements-c181460125', 'Replacements', 'Coils, pods, glass, and parts'],
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nic salt juice for pod systems'],
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice from 0mg to 12mg'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware'],
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use disposable vape devices'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems']
+        ]
+      },
+      '/products/Freebase-c181457932': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nicotine salt juice in 10mg and 20mg'],
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use disposable vape devices'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for daily use'],
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware'],
+          ['/products/Replacements-c181460125', 'Replacements', 'Coils, pods, glass, and parts'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges']
+        ]
+      },
+      '/products/Replacements-c181460125': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for daily use'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems'],
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nic salt juice for pod systems'],
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice from 0mg to 12mg'],
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use disposable vape devices'],
+          ['/products/Closed-Pods-c181465541', 'Closed Pods', 'Pre-filled pod cartridges and refills']
         ]
       }
     };
@@ -704,7 +778,27 @@
   }
 
   /* ──────────────────────────────────────
-     15. FIX STATIC SCHEMA — Patch Ecwid VapeShop → Store
+     15. SPA NAVIGATION WATCHER
+     Re-injects category blocks when the
+     URL changes without a full reload.
+  ────────────────────────────────────── */
+  function watchCategoryNav() {
+    var lastPath = window.location.pathname;
+    setInterval(function() {
+      var currentPath = window.location.pathname;
+      if (currentPath !== lastPath) {
+        lastPath = currentPath;
+        initCategoryMeta();
+        setTimeout(function() {
+          initCategoryH1();
+          initCategoryLinks();
+        }, 1500);
+      }
+    }, 1000);
+  }
+
+  /* ──────────────────────────────────────
+     16. FIX STATIC SCHEMA — Patch Ecwid VapeShop → Store
   ────────────────────────────────────── */
 
   function fixStaticSchema() {
@@ -773,6 +867,7 @@
         initCategoryH1();
         initCategoryLinks();
         fixStaticSchema();
+        watchCategoryNav();
       }, 2500);
     });
   } else {
@@ -790,10 +885,11 @@
       initCategoryH1();
       initCategoryLinks();
       fixStaticSchema();
+      watchCategoryNav();
     }, 2500);
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.3';
+  window.__KVS_VERSION__ = '3.1.4';
 
 })();
