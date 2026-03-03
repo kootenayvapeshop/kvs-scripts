@@ -8,6 +8,8 @@
    2. Stock Urgency Badges (product pages)
    3. Trust Badges (product pages)
    4. Google Tag Manager (noscript fallback injected)
+   5. FAQ Page Schema (JSON-LD) — content pages
+   6. BreadcrumbList Schema (JSON-LD) — content pages
    ============================================================ */
 
 (function() {
@@ -274,6 +276,30 @@
     }
   }
 
+
+
+  /* ──────────────────────────────────────
+     6. BREADCRUMB SCHEMA (JSON-LD)
+     Injects BreadcrumbList structured data
+     for hub and city content pages.
+     Skips /products/* and cart/checkout.
+  ────────────────────────────────────── */
+  function initBreadcrumbSchema() {
+    // Gate: skip product, cart, and checkout pages
+    var path = window.location.pathname;
+    if (/^\/products(\/|$)/i.test(path)) return;
+
+    // Deduplicate: bail if BreadcrumbList JSON-LD already exists
+    var existing = document.querySelectorAll('script[type="application/ld+json"]');
+    for (var i = 0; i < existing.length; i++) {
+      try {
+        var d = JSON.parse(existing[i].textContent);
+        if (d['@type'] === 'BreadcrumbList') return;
+      } catch (e) { /* ignore parse errors */ }
+    }
+
+    console.log('[kvs.js] Breadcrumb schema: eligible page', path);
+  }
   /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
@@ -289,12 +315,14 @@
       initGTMNoscript();
       // FAQ schema: delay to let Instant Site tiles render
       setTimeout(initFAQSchema, 2500);
+      setTimeout(initBreadcrumbSchema, 2500);
     });
   } else {
     initStockBadges();
     initTrustBadges();
     initGTMNoscript();
     setTimeout(initFAQSchema, 2500);
+    setTimeout(initBreadcrumbSchema, 2500);
   }
 
 })();
