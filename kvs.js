@@ -11,7 +11,7 @@
    5. FAQ Page Schema (JSON-LD) — content pages
    6. BreadcrumbList Schema (JSON-LD) — content pages
    7. Organization Schema (JSON-LD) — homepage only
- *   8. LocalBusiness Schema (JSON-LD) — 4 location pages
+   8. LocalBusiness Schema (JSON-LD) — 4 location pages
    ============================================================ */
 
 (function() {
@@ -481,7 +481,7 @@
     }
     var schema = {
       '@context': 'https://schema.org',
-      '@type': 'Store',
+      '@type': ['LocalBusiness', 'Store'],
       '@id': myId,
       'name': 'Kootenay Vape Shop — ' + store.city,
       'url': 'https://kootenayvapeshop.com' + path,
@@ -533,7 +533,7 @@
     setTimeout(initFAQSchema, 2500);
     setTimeout(initBreadcrumbSchema, 2500);
     setTimeout(initOrganizationSchema, 2500);
-      setTimeout(initLocalBusinessSchema, 2500);
+    setTimeout(initLocalBusinessSchema, 2500);
   }
 
 })();
