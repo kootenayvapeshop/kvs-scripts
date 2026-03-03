@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1
+   KVS — Site Scripts v3.1.1
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -653,6 +653,7 @@
 
   function fixStaticSchema() {
     if (window.location.pathname !== '/' && window.location.pathname !== '/home') return;
+    var patched = false;
     var scripts = document.querySelectorAll('script[type="application/ld+json"]');
     scripts.forEach(function(s) {
       if (s.id && s.id.indexOf('kvs-') === 0) return;
@@ -673,9 +674,19 @@
         }
         if (changed) {
           s.textContent = JSON.stringify(data);
+          patched = true;
         }
       } catch(e) {}
     });
+    window.__KVS_SCHEMA_PATCHED__ = patched;
+    // Post-patch verification: warn if any VapeShop survived
+    var remaining = false;
+    scripts.forEach(function(s) {
+      if (s.textContent.indexOf('VapeShop') > -1) remaining = true;
+    });
+    if (remaining) {
+      console.warn('[KVS] Schema patch incomplete: VapeShop still present');
+    }
   }
 
   /* ──────────────────────────────────────
@@ -723,5 +734,8 @@
       fixStaticSchema();
     }, 2500);
   }
+
+  // Runtime version marker
+  window.__KVS_VERSION__ = '3.1.1';
 
 })();
