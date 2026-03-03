@@ -1,26 +1,30 @@
 /* ============================================================
-   KVS ‚Äî Site Scripts v1.0
+   KVS — Site Scripts v3.0
    External JS for Kootenay Vape Shops
-   Loaded via: <script src="https://cdn.jsdelivr.net/gh/USERNAME/kvs-scripts/kvs.js"></script>
-   
+   Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
+
    Contains:
-   1. Age Verification Gate (19+ BC requirement)
+   1. Age Verification Gate (19+ Canada requirement)
    2. Stock Urgency Badges (product pages)
    3. Trust Badges (product pages)
    4. Google Tag Manager (noscript fallback injected)
-   5. FAQ Page Schema (JSON-LD) ‚Äî content pages
-   6. BreadcrumbList Schema (JSON-LD) ‚Äî content pages
-   7. Organization Schema (JSON-LD) ‚Äî homepage only
-   8. LocalBusiness Schema (JSON-LD) ‚Äî 4 location pages
-   9. WebSite + Sitelinks Search Box (JSON-LD) ‚Äî homepage only
+   5. FAQ Page Schema (JSON-LD) — content pages
+   6. BreadcrumbList Schema (JSON-LD) — content pages
+   7. Organization Schema (JSON-LD) — homepage only
+   8. LocalBusiness Schema (JSON-LD) — 4 location pages
+   9. WebSite + Sitelinks Search Box (JSON-LD) — homepage only
+   10. Kimberley H1 Safety Net — location page fix
+   11. Product Title Suffix — PDP title enrichment
+   12. Category Meta Description Fix — category pages
+   13. Category H1 Injection — category pages
    ============================================================ */
 
 (function() {
   'use strict';
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      1. AGE VERIFICATION GATE
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
 
   function getCookie(name) {
     var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -67,14 +71,14 @@
         '<div id="kvs-age-gate-sub">Trail &bull; Creston &bull; Kimberley &bull; Grand Forks</div>',
         '<div id="kvs-age-gate-title">Are You 19 or Older?</div>',
         '<div id="kvs-age-gate-body">',
-          'Vaping products are for <strong>adults 19+ only</strong> in British Columbia.',
+          'Vaping products are for <strong>adults 19+ only</strong> in Canada.',
           '<br><br>',
           'By entering this site you confirm you are of legal age and agree to our Terms & Conditions.',
         '</div>',
-        '<button class="kvs-age-btn" id="kvs-age-yes">Yes, I\'m 19 or Older ‚Äî Enter</button>',
+        '<button class="kvs-age-btn" id="kvs-age-yes">Yes, I\'m 19 or Older — Enter</button>',
         '<button class="kvs-age-btn" id="kvs-age-no">No, I\'m Under 19</button>',
         '<div id="kvs-age-gate-legal">',
-          'This site sells nicotine products. Must be 19+ to purchase in BC.',
+          'This site sells nicotine products. Must be 19+ to purchase. Ships to BC, SK, NS & NL.',
           '<br>By entering you confirm you meet the legal age requirement.',
         '</div>',
       '</div>'
@@ -104,12 +108,12 @@
     });
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      2. STOCK URGENCY BADGES
      Rewrites "In stock: X available" text
      with color-coded urgency messaging.
      CSS classes defined in Custom CSS.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
 
   function initStockBadges() {
     var checkInterval = setInterval(function() {
@@ -138,12 +142,12 @@
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      3. TRUST BADGES
      Injects trust indicators below the
      Add to Bag button on product pages.
      CSS classes defined in Custom CSS.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
 
   function initTrustBadges() {
     var checkInterval = setInterval(function() {
@@ -178,9 +182,9 @@
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      4. GTM NOSCRIPT FALLBACK
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
 
   function initGTMNoscript() {
     var noscript = document.createElement('noscript');
@@ -194,12 +198,12 @@
     document.body.insertBefore(noscript, document.body.firstChild);
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      5. FAQ PAGE SCHEMA (JSON-LD)
      Extracts Q/A pairs from content pages
      and injects FAQPage structured data.
      Skips /products/* and cart/checkout.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
   function initFAQSchema() {
     // Gate: skip product, cart, and checkout pages
     var path = window.location.pathname;
@@ -270,23 +274,16 @@
     script.type = 'application/ld+json';
     script.textContent = JSON.stringify(schema);
     document.head.appendChild(script);
-
-    // Debug logging (remove after confirming)
-    console.log('[kvs.js] FAQPage schema injected:', pairs.length, 'Q/A pairs');
-    if (pairs.length >= 2) {
-      console.log('[kvs.js] Q1:', pairs[0].q, '| A1:', pairs[0].a.slice(0, 80));
-      console.log('[kvs.js] Q2:', pairs[1].q, '| A2:', pairs[1].a.slice(0, 80));
-    }
   }
 
 
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      6. BREADCRUMB SCHEMA (JSON-LD)
      Injects BreadcrumbList structured data
      for hub and city content pages.
      Skips /products/* and cart/checkout.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
   function initBreadcrumbSchema() {
     // Gate: skip product, cart, and checkout pages
     var path = window.location.pathname;
@@ -351,17 +348,15 @@
     script.id = 'kvs-breadcrumb-jsonld';
     script.textContent = JSON.stringify(schema);
     document.head.appendChild(script);
-
-    console.log('[kvs.js] Breadcrumb injected:', JSON.stringify(schema, null, 2));
   }
 
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      7. ORGANIZATION SCHEMA (JSON-LD)
      Injects Organization structured data
      on the homepage only. Uses same @id as
      existing @graph Organization to enrich it.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
   function initOrganizationSchema() {
     // Gate: homepage only
     var path = window.location.pathname;
@@ -407,12 +402,10 @@
     script.id = 'kvs-org-jsonld';
     script.textContent = JSON.stringify(schema);
     document.head.appendChild(script);
-
-    console.log('[kvs.js] Organization schema injected');
   }
 
   /* ===========================================
-     SECTION 8 ‚Äî LocalBusiness Schema (JSON-LD)
+     SECTION 8 — LocalBusiness Schema (JSON-LD)
      Injects LocalBusiness structured data on
      the 4 physical-store location pages only.
      =========================================== */
@@ -489,7 +482,7 @@
       '@context': 'https://schema.org',
       '@type': ['LocalBusiness', 'Store'],
       '@id': myId,
-      'name': 'Kootenay Vape Shop ‚Äî ' + store.city,
+      'name': 'Kootenay Vape Shop — ' + store.city,
       'url': 'https://kootenayvapeshop.com' + path,
       'telephone': store.phone,
       'address': {
@@ -510,13 +503,12 @@
     script.id = 'kvs-lb-jsonld';
     script.textContent = JSON.stringify(schema);
     document.head.appendChild(script);
-    console.log('[kvs.js] LocalBusiness schema injected: ' + store.city);
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
 
   /* ===========================================
-     SECTION 9 ‚Äî WebSite + Sitelinks Search Box (JSON-LD)
+     SECTION 9 — WebSite + Sitelinks Search Box (JSON-LD)
      Injects WebSite schema with SearchAction
      on the homepage only.
      =========================================== */
@@ -553,15 +545,14 @@
     script.id = 'kvs-website-jsonld';
     script.textContent = JSON.stringify(schema);
     document.head.appendChild(script);
-    console.log('[kvs.js] WebSite schema injected');
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      10. KIMBERLEY H1 SAFETY NET
      Corrects the wrong H1 on /kimberley-vape-shop
      until the Ecwid tile heading is fixed in admin.
      Remove this section once the admin fix is confirmed.
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
   function fixKimberleyH1() {
     if (window.location.pathname !== '/kimberley-vape-shop') return;
 
@@ -570,18 +561,17 @@
       var text = h1s[i].textContent.trim();
       if (text === 'Fresh & Delicious') {
         h1s[i].textContent = 'Kootenay Vape Shop \u2014 Kimberley, BC';
-        console.log('[kvs.js] Fixed Kimberley H1: "Fresh & Delicious" ‚Üí "Kootenay Vape Shop ‚Äî Kimberley, BC"');
         return;
       }
     }
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+  /* ──────────────────────────────────────
      11. PRODUCT TITLE SUFFIX
      Appends brand suffix to <title> on PDPs
      so SERPs show "Product Name | Buy Online | Kootenay Vape Shops"
      instead of just "Product Name".
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  ────────────────────────────────────── */
   function initProductTitleSuffix() {
     var path = window.location.pathname;
     // Only fire on product detail pages (pattern: /products/Slug-p{digits})
@@ -601,15 +591,70 @@
     }
 
     document.title = title + suffix;
-    console.log('[kvs.js] Product title updated: ' + document.title);
   }
 
-  /* ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-     INIT ‚Äî Run everything
-  ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ */
+  /* ──────────────────────────────────────
+     12. CATEGORY META DESCRIPTION FIX
+     Overrides the generic site-wide meta
+     description on category pages with
+     the correct category-specific text.
+  ────────────────────────────────────── */
+  function initCategoryMeta() {
+    var path = window.location.pathname;
+    var metas = {
+      '/products/Disposables-c181465790': 'Shop disposable vapes from Lost Mary, Elf Bar & Flavour Beast. Lowest prices in BC with fast shipping to BC, SK, NS & NL.',
+      '/products/Salt-Nic-c181460122': 'Shop salt nicotine e-liquid from $23.99 + tax. Smooth nic salt juice for pod systems from top Canadian brands. Ships to BC, SK, NS & NL.',
+      '/products/Freebase-c181457932': 'Shop freebase e-liquid from $20.99 + tax. Wide range of flavours and nicotine strengths for sub-ohm vaping. Ships to BC, SK, NS & NL.',
+      '/products/Closed-Pod-Devices-c181465296': 'Shop closed pod system devices including STLTH and Vuse. Simple, easy-to-use pod vapes with fast BC-wide shipping. Low prices guaranteed.',
+      '/products/Vape-Hardware-c181465792': 'Shop vape mods, pod systems, starter kits & tanks from Geekvape, Voopoo, Uwell & more. Lowest prices in BC. Ships Canada-wide.',
+      '/products/Coils-c181465794': 'Shop replacement vape coils for Geekvape, Voopoo, Uwell, SMOK & Vaporesso devices. Lowest prices in BC with fast province-wide shipping.'
+    };
+    var desc = metas[path];
+    if (!desc) return;
+    var meta = document.querySelector('meta[name="description"]');
+    if (meta) {
+      meta.setAttribute('content', desc);
+    }
+  }
+
+  /* ──────────────────────────────────────
+     13. CATEGORY H1 INJECTION
+     Ecwid category pages have no H1 by
+     default. This injects one above the
+     product grid.
+  ────────────────────────────────────── */
+  function initCategoryH1() {
+    var path = window.location.pathname;
+    var headings = {
+      '/products/Disposables-c181465790': 'Disposable Vapes',
+      '/products/Salt-Nic-c181460122': 'Salt Nic E-Liquid',
+      '/products/Freebase-c181457932': 'Freebase E-Liquid',
+      '/products/Closed-Pod-Devices-c181465296': 'Closed Pod Devices',
+      '/products/Vape-Hardware-c181465792': 'Vape Hardware',
+      '/products/Coils-c181465794': 'Replacement Coils',
+      '/products/420-c181460866': '420 Accessories'
+    };
+    var text = headings[path];
+    if (!text) return;
+    if (document.querySelector('h1')) return;
+    var h1 = document.createElement('h1');
+    h1.textContent = text;
+    h1.style.cssText = 'font-family:"Bebas Neue","Arial Narrow",sans-serif;font-size:2rem;letter-spacing:0.04em;text-align:center;margin:1.5rem 0 0.5rem;color:#fff;';
+    var grid = document.querySelector('.ec-store') || document.querySelector('[class*="product"]');
+    if (grid) {
+      grid.parentElement.insertBefore(h1, grid);
+    }
+  }
+
+  /* ──────────────────────────────────────
+     INIT — Run everything
+  ────────────────────────────────────── */
 
   // Age gate runs immediately
   initAgeGate();
+
+  // Category meta runs immediately (modifies meta tags, no DOM rendering needed)
+  initCategoryMeta();
 
   // Everything else waits for DOM
   if (document.readyState === 'loading') {
@@ -617,26 +662,32 @@
       initStockBadges();
       initTrustBadges();
       initGTMNoscript();
-      fixKimberleyH1();
-      // FAQ schema: delay to let Instant Site tiles render
-      setTimeout(initFAQSchema, 2500);
-      setTimeout(initBreadcrumbSchema, 2500);
-      setTimeout(initOrganizationSchema, 2500);
-      setTimeout(initLocalBusinessSchema, 2500);
-      setTimeout(initWebSiteSchema, 2500);
-      setTimeout(initProductTitleSuffix, 2500);
+      // Delayed sections: wait for Instant Site tiles to render
+      setTimeout(function() {
+        fixKimberleyH1();
+        initFAQSchema();
+        initBreadcrumbSchema();
+        initOrganizationSchema();
+        initLocalBusinessSchema();
+        initWebSiteSchema();
+        initProductTitleSuffix();
+        initCategoryH1();
+      }, 2500);
     });
   } else {
     initStockBadges();
     initTrustBadges();
     initGTMNoscript();
-    fixKimberleyH1();
-    setTimeout(initFAQSchema, 2500);
-    setTimeout(initBreadcrumbSchema, 2500);
-    setTimeout(initOrganizationSchema, 2500);
-    setTimeout(initLocalBusinessSchema, 2500);
-    setTimeout(initWebSiteSchema, 2500);
-    setTimeout(initProductTitleSuffix, 2500);
+    setTimeout(function() {
+      fixKimberleyH1();
+      initFAQSchema();
+      initBreadcrumbSchema();
+      initOrganizationSchema();
+      initLocalBusinessSchema();
+      initWebSiteSchema();
+      initProductTitleSuffix();
+      initCategoryH1();
+    }, 2500);
   }
 
 })();
