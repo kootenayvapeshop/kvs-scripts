@@ -11,6 +11,7 @@
    5. FAQ Page Schema (JSON-LD) — content pages
    6. BreadcrumbList Schema (JSON-LD) — content pages
    7. Organization Schema (JSON-LD) — homepage only
+ *   8. LocalBusiness Schema (JSON-LD) — 4 location pages
    ============================================================ */
 
 (function() {
@@ -403,6 +404,109 @@
 
     console.log('[kvs.js] Organization schema injected');
   }
+
+  /* ===========================================
+     SECTION 8 — LocalBusiness Schema (JSON-LD)
+     Injects LocalBusiness structured data on
+     the 4 physical-store location pages only.
+     =========================================== */
+  function initLocalBusinessSchema() {
+    var path = window.location.pathname;
+    var stores = {
+      '/kimberley-vape-shop': {
+        city: 'Kimberley', street: '370 Wallinger Ave', locality: 'Kimberley',
+        postal: 'V1A 1Z4', phone: '+1 778-481-0755',
+        map: 'https://www.google.com/maps/place/?q=place_id:ChIJ6UXsMDzVZFMR-ST9TFO_5q8',
+        hours: [
+          { days: ['Monday'], opens: '10:00', closes: '18:00' },
+          { days: ['Tuesday','Wednesday','Thursday','Friday','Saturday'], opens: '10:00', closes: '20:00' },
+          { days: ['Sunday'], opens: '10:00', closes: '18:00' }
+        ]
+      },
+      '/trail-vape-shop': {
+        city: 'Trail', street: '1330 Bay Ave', locality: 'Trail',
+        postal: 'V1R 4A8', phone: '+1 778-456-4450',
+        map: 'https://www.google.com/maps/place/?q=place_id:ChIJ-aHPvPLZYlMRzLTvMHxqYkQ',
+        hours: [
+          { days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], opens: '08:00', closes: '20:00' },
+          { days: ['Sunday'], opens: '10:00', closes: '20:00' }
+        ]
+      },
+      '/creston-vape-shop': {
+        city: 'Creston', street: '1415 Canyon St B', locality: 'Creston',
+        postal: 'V0B 1G0', phone: '+1 250-428-0100',
+        map: 'https://www.google.com/maps/place/?q=place_id:ChIJfZaclddjY1MRh2DjoO0nlTk',
+        hours: [
+          { days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], opens: '09:00', closes: '20:00' },
+          { days: ['Sunday'], opens: '10:00', closes: '18:00' }
+        ]
+      },
+      '/grand-forks-vape-shop': {
+        city: 'Grand Forks', street: '7457 3rd Street', locality: 'Grand Forks',
+        postal: 'V0H 1H0', phone: '+1 236-352-0027',
+        map: 'https://www.google.com/maps/place/?q=place_id:ChIJF4c7_cmtYlMRF2FzZd-xyDg',
+        hours: [
+          { days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], opens: '09:00', closes: '20:00' },
+          { days: ['Sunday'], opens: '10:00', closes: '18:00' }
+        ]
+      }
+    };
+    var store = stores[path];
+    if (!store) return;
+    if (document.getElementById('kvs-lb-jsonld')) return;
+    var existingScripts = document.querySelectorAll('script[type="application/ld+json"]');
+    var myId = 'https://kootenayvapeshop.com' + path + '#localbusiness';
+    for (var i = 0; i < existingScripts.length; i++) {
+      try {
+        var parsed = JSON.parse(existingScripts[i].textContent);
+        if (parsed['@type'] === 'LocalBusiness' && parsed['@id'] === myId) return;
+        if (parsed['@graph']) {
+          for (var j = 0; j < parsed['@graph'].length; j++) {
+            if (parsed['@graph'][j]['@type'] === 'LocalBusiness' && parsed['@graph'][j]['@id'] === myId) return;
+          }
+        }
+      } catch (e) {}
+    }
+    var hoursSpec = [];
+    for (var h = 0; h < store.hours.length; h++) {
+      var entry = store.hours[h];
+      for (var d = 0; d < entry.days.length; d++) {
+        hoursSpec.push({
+          '@type': 'OpeningHoursSpecification',
+          'dayOfWeek': entry.days[d],
+          'opens': entry.opens,
+          'closes': entry.closes
+        });
+      }
+    }
+    var schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Store',
+      '@id': myId,
+      'name': 'Kootenay Vape Shop — ' + store.city,
+      'url': 'https://kootenayvapeshop.com' + path,
+      'telephone': store.phone,
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': store.street,
+        'addressLocality': store.locality,
+        'addressRegion': 'BC',
+        'postalCode': store.postal,
+        'addressCountry': 'CA'
+      },
+      'openingHoursSpecification': hoursSpec,
+      'hasMap': store.map,
+      'areaServed': { '@type': 'AdministrativeArea', 'name': 'British Columbia' },
+      'parentOrganization': { '@id': 'https://kootenayvapeshop.com/#organization' }
+    };
+    var script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'kvs-lb-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+    console.log('[kvs.js] LocalBusiness schema injected: ' + store.city);
+  }
+
   /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
@@ -420,6 +524,7 @@
       setTimeout(initFAQSchema, 2500);
       setTimeout(initBreadcrumbSchema, 2500);
       setTimeout(initOrganizationSchema, 2500);
+      setTimeout(initLocalBusinessSchema, 2500);
     });
   } else {
     initStockBadges();
@@ -428,6 +533,7 @@
     setTimeout(initFAQSchema, 2500);
     setTimeout(initBreadcrumbSchema, 2500);
     setTimeout(initOrganizationSchema, 2500);
+      setTimeout(initLocalBusinessSchema, 2500);
   }
 
 })();
