@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.2
+   KVS — Site Scripts v3.1.3
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -652,7 +652,59 @@
   }
 
   /* ──────────────────────────────────────
-     14. FIX STATIC SCHEMA — Patch Ecwid VapeShop → Store
+     14. CATEGORY LINKS — Inject related-category block on category pages
+  ────────────────────────────────────── */
+
+  function initCategoryLinks() {
+    if (document.getElementById('kvs-category-links')) return;
+    var path = window.location.pathname;
+    if (path.indexOf('/products/') !== 0 || path.indexOf('-c') === -1) return;
+
+    var links = {
+      '/products/Disposables-c181465790': {
+        label: 'POPULAR RELATED CATEGORIES',
+        items: [
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nicotine salt juice in 10mg and 20mg'],
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice from 0mg to 12mg'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for daily use'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod hardware'],
+          ['/products/Closed-Pods-c181465541', 'Closed Pods', 'Pre-filled pod cartridges and refills'],
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
+          ['/products/Replacements-c181460125', 'Replacements', 'Coils, pods, glass, and parts']
+        ]
+      }
+    };
+
+    var data = links[path];
+    if (!data) return;
+
+    var B = '\u2022';
+    var D = '\u2014';
+    var html = '<p style="margin-bottom:0.3rem;"><strong>' + data.label + '</strong></p>';
+    for (var i = 0; i < data.items.length; i++) {
+      var item = data.items[i];
+      html += '<p style="margin:0.15rem 0;">' + B + ' <a href="' + item[0] + '">' + item[1] + '</a> ' + D + ' ' + item[2] + '</p>';
+    }
+
+    var block = document.createElement('div');
+    block.id = 'kvs-category-links';
+    block.style.cssText = 'max-width:960px;margin:1rem auto 1.5rem;padding:0 1rem;color:#ccc;font-size:0.95rem;line-height:1.6;';
+    block.innerHTML = html;
+
+    var desc = document.querySelector('.grid__description');
+    if (desc) {
+      desc.parentElement.insertBefore(block, desc.nextSibling);
+      return;
+    }
+    var grid = document.querySelector('.ec-store') || document.querySelector('[class*="product"]');
+    if (grid) {
+      grid.parentElement.insertBefore(block, grid);
+    }
+  }
+
+  /* ──────────────────────────────────────
+     15. FIX STATIC SCHEMA — Patch Ecwid VapeShop → Store
   ────────────────────────────────────── */
 
   function fixStaticSchema() {
@@ -719,6 +771,7 @@
         initWebSiteSchema();
         initProductTitleSuffix();
         initCategoryH1();
+        initCategoryLinks();
         fixStaticSchema();
       }, 2500);
     });
@@ -735,11 +788,12 @@
       initWebSiteSchema();
       initProductTitleSuffix();
       initCategoryH1();
+      initCategoryLinks();
       fixStaticSchema();
     }, 2500);
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.2';
+  window.__KVS_VERSION__ = '3.1.3';
 
 })();
