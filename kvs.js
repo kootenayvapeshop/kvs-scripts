@@ -10,6 +10,7 @@
    4. Google Tag Manager (noscript fallback injected)
    5. FAQ Page Schema (JSON-LD) — content pages
    6. BreadcrumbList Schema (JSON-LD) — content pages
+   7. Organization Schema (JSON-LD) — homepage only
    ============================================================ */
 
 (function() {
@@ -351,6 +352,57 @@
 
     console.log('[kvs.js] Breadcrumb injected:', JSON.stringify(schema, null, 2));
   }
+
+
+  /* ──────────────────────────────────────
+     7. ORGANIZATION SCHEMA (JSON-LD)
+     Injects Organization structured data
+     on the homepage only. Uses same @id as
+     existing @graph Organization to enrich it.
+  ────────────────────────────────────── */
+  function initOrganizationSchema() {
+    // Gate: homepage only
+    var path = window.location.pathname;
+    if (path !== '/' && path !== '/home') return;
+
+    // Deduplicate
+    if (document.getElementById('kvs-org-jsonld')) return;
+
+    var schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      '@id': 'https://kootenayvapeshop.com/#organization',
+      'name': 'Kootenay Vape Shops',
+      'alternateName': 'KVS',
+      'legalName': 'KVS Vapour Shop Inc',
+      'url': 'https://kootenayvapeshop.com/',
+      'logo': 'https://dhgf5mcbrms62.cloudfront.net/84286959/header-gmyXL6/0YeCDyc-200x200.png',
+      'contactPoint': {
+        '@type': 'ContactPoint',
+        'email': 'nick@kootenayvapeshop.com',
+        'contactType': 'customer service'
+      },
+      'areaServed': [
+        { '@type': 'Province', 'name': 'British Columbia' },
+        { '@type': 'Province', 'name': 'Saskatchewan' },
+        { '@type': 'Province', 'name': 'Nova Scotia' },
+        { '@type': 'Province', 'name': 'Newfoundland and Labrador' }
+      ],
+      'numberOfEmployees': { '@type': 'QuantitativeValue', 'value': 4 },
+      'foundingLocation': {
+        '@type': 'Place',
+        'name': 'Trail, British Columbia'
+      }
+    };
+
+    var script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'kvs-org-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+
+    console.log('[kvs.js] Organization schema injected');
+  }
   /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
@@ -367,6 +419,7 @@
       // FAQ schema: delay to let Instant Site tiles render
       setTimeout(initFAQSchema, 2500);
       setTimeout(initBreadcrumbSchema, 2500);
+      setTimeout(initOrganizationSchema, 2500);
     });
   } else {
     initStockBadges();
@@ -374,6 +427,7 @@
     initGTMNoscript();
     setTimeout(initFAQSchema, 2500);
     setTimeout(initBreadcrumbSchema, 2500);
+    setTimeout(initOrganizationSchema, 2500);
   }
 
 })();
