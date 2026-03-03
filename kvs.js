@@ -383,10 +383,10 @@
         'contactType': 'customer service'
       },
       'areaServed': [
-        { '@type': 'Province', 'name': 'British Columbia' },
-        { '@type': 'Province', 'name': 'Saskatchewan' },
-        { '@type': 'Province', 'name': 'Nova Scotia' },
-        { '@type': 'Province', 'name': 'Newfoundland and Labrador' }
+        { '@type': 'AdministrativeArea', 'name': 'British Columbia' },
+        { '@type': 'AdministrativeArea', 'name': 'Saskatchewan' },
+        { '@type': 'AdministrativeArea', 'name': 'Nova Scotia' },
+        { '@type': 'AdministrativeArea', 'name': 'Newfoundland and Labrador' }
       ],
       'numberOfEmployees': { '@type': 'QuantitativeValue', 'value': 4 },
       'foundingLocation': {
