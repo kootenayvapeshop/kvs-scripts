@@ -289,7 +289,8 @@
     var path = window.location.pathname;
     if (/^\/products(\/|$)/i.test(path)) return;
 
-    // Deduplicate: bail if BreadcrumbList JSON-LD already exists
+    // Deduplicate: bail if already injected
+    if (document.getElementById('kvs-breadcrumb-jsonld')) return;
     var existing = document.querySelectorAll('script[type="application/ld+json"]');
     for (var i = 0; i < existing.length; i++) {
       try {
@@ -298,7 +299,57 @@
       } catch (e) { /* ignore parse errors */ }
     }
 
-    console.log('[kvs.js] Breadcrumb schema: eligible page', path);
+    // Extract page info
+    var homeUrl = 'https://kootenayvapeshop.com/';
+    var currentUrl = window.location.origin + window.location.pathname;
+    var h1El = document.querySelector('h1');
+    var pageTitle = h1El ? h1El.textContent.trim() : '';
+    if (!pageTitle) {
+      pageTitle = document.title.replace(/\s*[\|\-]\s*K(VS|ootenay).*$/i, '').trim();
+    }
+    if (!pageTitle) return;
+
+    // Detect hub backlink (city pages have "\u2190 ... Online Vape Shop" link)
+    var hubUrl = '';
+    var hubName = '';
+    var allLinks = document.querySelectorAll('.ins-tile__description a');
+    for (var j = 0; j < allLinks.length; j++) {
+      var linkText = (allLinks[j].textContent || '').trim();
+      if (/\u2190/.test(linkText) || /Online Vape Shop/i.test(linkText)) {
+        hubUrl = allLinks[j].href || '';
+        if (hubUrl && !/^https?:\/\//.test(hubUrl)) {
+          hubUrl = 'https://kootenayvapeshop.com' + hubUrl;
+        }
+        hubName = linkText.replace(/[\u2190\u2192\u27F5\u27F6<>]/g, '').trim();
+        break;
+      }
+    }
+
+    // Build breadcrumb items
+    var items = [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': homeUrl }
+    ];
+    if (hubUrl && hubName) {
+      items.push({ '@type': 'ListItem', 'position': 2, 'name': hubName, 'item': hubUrl });
+      items.push({ '@type': 'ListItem', 'position': 3, 'name': pageTitle, 'item': currentUrl });
+    } else {
+      items.push({ '@type': 'ListItem', 'position': 2, 'name': pageTitle, 'item': currentUrl });
+    }
+    if (items.length > 3) items = items.slice(0, 3);
+
+    var schema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      'itemListElement': items
+    };
+
+    var script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'kvs-breadcrumb-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+
+    console.log('[kvs.js] Breadcrumb injected:', JSON.stringify(schema, null, 2));
   }
   /* ──────────────────────────────────────
      INIT — Run everything
