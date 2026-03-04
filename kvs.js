@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.10
+   KVS — Site Scripts v3.1.11
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -22,6 +22,7 @@
    16. SPA Navigation Watcher — re-injects category blocks on URL change
    17. Fix Static Schema — patch Ecwid VapeShop → Store
    18. Best Sellers — merchandising blocks on category pages
+   19. Product Page Related Links — "Shop More Like This" on PDPs
    ============================================================ */
 
 (function() {
@@ -993,6 +994,123 @@
   }
 
   /* ──────────────────────────────────────
+     19. PRODUCT PAGE RELATED LINKS
+     "Shop More Like This" internal links
+     on product detail pages.
+  ────────────────────────────────────── */
+
+  var _relatedCache = {};
+
+  function initProductRelatedLinks() {
+    // Remove existing block (SPA-safe)
+    var old = document.getElementById('kvs-related-links');
+    if (old) old.remove();
+
+    // Only on product pages: /products/<slug>-p<id>
+    var path = window.location.pathname;
+    var pdpMatch = path.match(/^\/products\/.+-p(\d+)$/i);
+    if (!pdpMatch) return;
+    var productId = pdpMatch[1];
+
+    // Category map
+    var CATS = {
+      '181465790': { label: 'Disposables', url: '/products/Disposables-c181465790' },
+      '181460122': { label: 'Salt Nic', url: '/products/Salt-Nic-c181460122' },
+      '181457932': { label: 'Freebase', url: '/products/Freebase-c181457932' },
+      '181465794': { label: 'Coils', url: '/products/Coils-c181465794' },
+      '181465296': { label: 'Closed Pod Devices', url: '/products/Closed-Pod-Devices-c181465296' },
+      '181465297': { label: 'Open Pod Devices', url: '/products/Open-Pod-Devices-c181465297' },
+      '181465792': { label: 'Vape Hardware', url: '/products/Vape-Hardware-c181465792' },
+      '181460125': { label: 'Replacements', url: '/products/Replacements-c181460125' }
+    };
+
+    // Get product info (from cache or DOM)
+    var info = _relatedCache[productId];
+    if (!info) {
+      // Product name: prefer DOM title element, fall back to document.title
+      var titleEl = document.querySelector('.product-details__product-title')
+        || document.querySelector('.product-details h1')
+        || document.querySelector('h1');
+      var productName = '';
+      if (titleEl && titleEl.textContent.trim()) {
+        productName = titleEl.textContent.trim();
+      } else {
+        productName = (document.title || '').replace(/\s*[\|–—].*$/, '').trim();
+      }
+
+      // Category from breadcrumb (parse BEFORE inserting our block)
+      var currentCatId = null;
+      var bcLinks = document.querySelectorAll('.breadcrumbs a, .ec-breadcrumbs a, [class*="breadcrumb"] a');
+      for (var b = 0; b < bcLinks.length; b++) {
+        var href = bcLinks[b].getAttribute('href') || '';
+        var cm = href.match(/-c(\d+)/);
+        if (cm) currentCatId = cm[1];
+      }
+
+      info = { name: productName, catId: currentCatId };
+      _relatedCache[productId] = info;
+    }
+
+    // Build links (max 6, no duplicates)
+    var links = [];
+    var seen = {};
+    function addLink(url, label) {
+      if (seen[url] || links.length >= 6) return;
+      seen[url] = true;
+      links.push([url, label]);
+    }
+
+    // 1. Primary category (from breadcrumb)
+    if (info.catId && CATS[info.catId]) {
+      addLink(CATS[info.catId].url, CATS[info.catId].label);
+    }
+
+    // 2. Replacements hub if product name matches keywords
+    if (/coil|pod|cartridge|replacement|glass|tank/i.test(info.name)) {
+      addLink('/products/Replacements-c181460125', 'Replacements');
+    }
+
+    // 3. Money categories (fill remaining slots, skip current + Open Pod Devices)
+    var moneyOrder = ['181465790', '181460122', '181457932', '181465794', '181465296'];
+    for (var m = 0; m < moneyOrder.length; m++) {
+      if (moneyOrder[m] === info.catId) continue;
+      addLink(CATS[moneyOrder[m]].url, CATS[moneyOrder[m]].label);
+    }
+
+    if (links.length === 0) return;
+
+    // Render
+    var B = '\u2022';
+    var blockStyle = 'max-width:960px;margin:1rem auto;padding:0 1rem;color:#ccc;font-size:0.95rem;line-height:1.6;';
+    var html = '<p style="margin-bottom:0.3rem;"><strong>SHOP MORE LIKE THIS</strong></p>';
+    for (var j = 0; j < links.length; j++) {
+      html += '<p style="margin:0.15rem 0;">' + B + ' <a href="' + links[j][0] + '">' + links[j][1] + '</a></p>';
+    }
+
+    var block = document.createElement('div');
+    block.id = 'kvs-related-links';
+    block.style.cssText = blockStyle;
+    block.innerHTML = html;
+
+    // Insertion: after purchase area > after product title > after description
+    var purchaseArea = document.querySelector('.details-product-purchase');
+    if (purchaseArea) {
+      purchaseArea.parentElement.insertBefore(block, purchaseArea.nextSibling);
+      return;
+    }
+    var titleBlock = document.querySelector('.product-details__product-title, .product-details h1');
+    if (titleBlock) {
+      var titleParent = titleBlock.parentElement;
+      titleParent.insertBefore(block, titleBlock.nextSibling);
+      return;
+    }
+    var descBlock = document.querySelector('[class*="product-details__description"]');
+    if (descBlock) {
+      descBlock.parentElement.insertBefore(block, descBlock.nextSibling);
+    }
+  }
+
+  /* ──────────────────────────────────────
      16. SPA NAVIGATION WATCHER (was 15)
      Re-injects category blocks when the
      URL changes without a full reload.
@@ -1009,6 +1127,7 @@
           initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
+          initProductRelatedLinks();
         }, 1500);
       }
     }, 1000);
@@ -1085,6 +1204,7 @@
         initBestSellers();
         initCategoryLinks();
         initCategoryHelper();
+        initProductRelatedLinks();
         fixStaticSchema();
         watchCategoryNav();
       }, 2500);
@@ -1105,12 +1225,13 @@
       initBestSellers();
       initCategoryLinks();
       initCategoryHelper();
+      initProductRelatedLinks();
       fixStaticSchema();
       watchCategoryNav();
     }, 2500);
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.10';
+  window.__KVS_VERSION__ = '3.1.11';
 
 })();
