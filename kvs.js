@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.15
+   KVS — Site Scripts v3.1.16
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -25,6 +25,7 @@
    19. Product Page Related Links — "Shop More Like This" on PDPs
    20. Hub Links — "Shop by Category" on hub pages
    21. OG & Twitter Card Tags — site-wide social sharing meta
+   22. Old Category Redirects — 301-style client redirect for deprecated category IDs
    ============================================================ */
 
 (function() {
@@ -1258,6 +1259,7 @@
       var currentPath = window.location.pathname;
       if (currentPath !== lastPath) {
         lastPath = currentPath;
+        initRedirects();
         initCategoryMeta();
         setTimeout(function() {
           initCategoryH1();
@@ -1314,8 +1316,33 @@
   }
 
   /* ──────────────────────────────────────
+     22. OLD CATEGORY REDIRECTS
+     Client-side redirect for deprecated
+     category IDs that are still indexed.
+     Maps old category paths → current paths.
+     Uses location.replace() for 301-like
+     behaviour (replaces history entry).
+  ────────────────────────────────────── */
+  function initRedirects() {
+    var path = window.location.pathname;
+    // Old category ID → current category path
+    // Source: GSC CTR report 2026-03-04 (378 combined wasted impressions)
+    var redirects = {
+      '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
+      '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
+    };
+    var target = redirects[path];
+    if (target) {
+      window.location.replace('https://kootenayvapeshop.com' + target);
+    }
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
+
+  // Redirects run first — send visitors to the right URL before anything else
+  initRedirects();
 
   // Age gate runs immediately
   initAgeGate();
@@ -1374,6 +1401,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.15';
+  window.__KVS_VERSION__ = '3.1.16';
 
 })();
