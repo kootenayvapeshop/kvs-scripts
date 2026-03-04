@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.5
+   KVS — Site Scripts v3.1.6
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -21,6 +21,7 @@
    15. Category Helper — disambiguation block for similar categories
    16. SPA Navigation Watcher — re-injects category blocks on URL change
    17. Fix Static Schema — patch Ecwid VapeShop → Store
+   18. Best Sellers & Popular Picks — merchandising blocks on category pages
    ============================================================ */
 
 (function() {
@@ -864,6 +865,125 @@
   }
 
   /* ──────────────────────────────────────
+     18. BEST SELLERS & POPULAR PICKS
+     Injects merchandising blocks on
+     category pages with POS-driven
+     best sellers and curated picks.
+  ────────────────────────────────────── */
+  function initBestSellers() {
+    // Remove existing blocks (handles SPA navigation between categories)
+    var path = window.location.pathname;
+    var catMatch = path.match(/-c(\d+)$/);
+    // Clean up any previous best seller/popular picks blocks
+    var oldBS = document.querySelectorAll('[id^="kvs-bestsellers-"]');
+    for (var r = 0; r < oldBS.length; r++) oldBS[r].remove();
+    var oldPP = document.querySelectorAll('[id^="kvs-popularpicks-"]');
+    for (var r2 = 0; r2 < oldPP.length; r2++) oldPP[r2].remove();
+
+    if (!catMatch) return;
+    var categoryId = catMatch[1];
+
+    // Data keyed by categoryId
+    var data = {
+      '181465790': {
+        bestSellers: [
+          ['/products/Fog-Formula-1600-Disposable-p564264046', 'Fog Formula 1600 Disposable']
+        ],
+        popularPicks: [
+          ['/products/STLTH-Box-1K-Disposable-p577651607', 'STLTH Box 1K Disposable'],
+          ['/products/Flavour-Beast-FURY-800-Disposable-p565506918', 'Flavour Beast FURY 800 Disposable'],
+          ['/products/Allo-Ultra-500-Disposable-p529161552', 'Allo Ultra 500 Disposable'],
+          ['/products/Beast-Nic-4K-Disposable-p757778548', 'Beast Nic 4K Disposable'],
+          ['/products/Elf-Bar-PRIME-1800-p703345264', 'Elf Bar PRIME 1800'],
+          ['/products/Hi5-SMOKELESS-Hybrid-Disposable-p749098340', 'Hi5 SMOKELESS Hybrid Disposable'],
+          ['/products/Elf-Bar-BC1000-Disposable-p529163295', 'Elf Bar BC1000 Disposable'],
+          ['/products/Gcore-INTENSE-3K-Disposable-p721917490', 'Gcore INTENSE 3K Disposable'],
+          ['/products/Hi5-PRIME-Hybrid-Disposable-p726861181', 'Hi5 PRIME Hybrid Disposable'],
+          ['/products/Rufpuf-RIPPER-SLEEK-Disposable-p787301718', 'Rufpuf RIPPER SLEEK Disposable'],
+          ['/products/Flex-Air-Ultra-6000-Disposable-p577204781', 'Flex Air Ultra 6000 Disposable']
+        ]
+      },
+      '181460122': {
+        bestSellers: [
+          ['/products/Flavour-Beast-eLiquid-Salt-p559110534', 'Flavour Beast eLiquid [Salt]'],
+          ['/products/Blackwood-Salt-p529161568', 'Blackwood [Salt]'],
+          ['/products/Naked-100-NKD100-Salt-p529155478', 'Naked 100 (NKD100) [Salt]'],
+          ['/products/Twelve-Monkeys-Salt-p529165539', 'Twelve Monkeys [Salt]']
+        ],
+        popularPicks: [
+          ['/products/Vibe-by-KVS-Salt-p567617366', 'Vibe by KVS [Salt]'],
+          ['/products/All-Day-Vapor-Salt-p529161564', 'All Day Vapor [Salt]'],
+          ['/products/Allo-eLiquid-Salt-p575420295', 'Allo eLiquid [Salt]'],
+          ['/products/Apple-Drop-Salt-p529154743', 'Apple Drop [Salt]'],
+          ['/products/Banana-Bang-Salt-p529155483', 'Banana Bang [Salt]'],
+          ['/products/Berry-Drop-Salt-p529166253', 'Berry Drop [Salt]'],
+          ['/products/Berry-Drop-Iced-Salt-p582004333', 'Berry Drop Iced [Salt]'],
+          ['/products/Black-Mamba-Salt-p529160330', 'Black Mamba [Salt]']
+        ]
+      }
+    };
+
+    var catData = data[categoryId];
+    if (!catData) return;
+
+    var B = '\u2022';
+    var blockStyle = 'max-width:960px;margin:0.75rem auto;padding:0 1rem;color:#ccc;font-size:0.95rem;line-height:1.6;';
+
+    // Find insertion point: after .grid__description, before #kvs-category-links
+    var anchor = document.getElementById('kvs-category-links');
+    var desc = document.querySelector('.grid__description');
+    var insertParent = null;
+    var insertBefore = null;
+
+    if (anchor) {
+      insertParent = anchor.parentElement;
+      insertBefore = anchor;
+    } else if (desc) {
+      insertParent = desc.parentElement;
+      insertBefore = desc.nextSibling;
+    } else {
+      var grid = document.querySelector('.ec-store') || document.querySelector('[class*="product"]');
+      if (grid) {
+        insertParent = grid.parentElement;
+        insertBefore = grid;
+      }
+    }
+    if (!insertParent) return;
+
+    // Block A: Best Sellers
+    if (catData.bestSellers.length > 0) {
+      var bsHtml = '<p style="margin-bottom:0.3rem;"><strong>BEST SELLERS (LAST 30 DAYS)</strong></p>';
+      for (var i = 0; i < catData.bestSellers.length; i++) {
+        bsHtml += '<p style="margin:0.15rem 0;">' + B + ' <a href="' + catData.bestSellers[i][0] + '">' + catData.bestSellers[i][1] + '</a></p>';
+      }
+      var bsBlock = document.createElement('div');
+      bsBlock.id = 'kvs-bestsellers-' + categoryId;
+      bsBlock.style.cssText = blockStyle;
+      bsBlock.innerHTML = bsHtml;
+      insertParent.insertBefore(bsBlock, insertBefore);
+    }
+
+    // Block B: Popular Picks
+    if (catData.popularPicks.length > 0) {
+      var ppHtml = '<p style="margin-bottom:0.3rem;"><strong>POPULAR PICKS (IN STOCK ONLINE)</strong></p>';
+      for (var j = 0; j < catData.popularPicks.length; j++) {
+        ppHtml += '<p style="margin:0.15rem 0;">' + B + ' <a href="' + catData.popularPicks[j][0] + '">' + catData.popularPicks[j][1] + '</a></p>';
+      }
+      var ppBlock = document.createElement('div');
+      ppBlock.id = 'kvs-popularpicks-' + categoryId;
+      ppBlock.style.cssText = blockStyle;
+      ppBlock.innerHTML = ppHtml;
+      // Insert after best sellers block (or at same anchor if no best sellers)
+      var ppAnchor = document.getElementById('kvs-bestsellers-' + categoryId);
+      if (ppAnchor) {
+        insertParent.insertBefore(ppBlock, ppAnchor.nextSibling);
+      } else {
+        insertParent.insertBefore(ppBlock, insertBefore);
+      }
+    }
+  }
+
+  /* ──────────────────────────────────────
      16. SPA NAVIGATION WATCHER (was 15)
      Re-injects category blocks when the
      URL changes without a full reload.
@@ -877,6 +997,7 @@
         initCategoryMeta();
         setTimeout(function() {
           initCategoryH1();
+          initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
         }, 1500);
@@ -952,6 +1073,7 @@
         initWebSiteSchema();
         initProductTitleSuffix();
         initCategoryH1();
+        initBestSellers();
         initCategoryLinks();
         initCategoryHelper();
         fixStaticSchema();
@@ -971,6 +1093,7 @@
       initWebSiteSchema();
       initProductTitleSuffix();
       initCategoryH1();
+      initBestSellers();
       initCategoryLinks();
       initCategoryHelper();
       fixStaticSchema();
@@ -979,6 +1102,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.5';
+  window.__KVS_VERSION__ = '3.1.6';
 
 })();
