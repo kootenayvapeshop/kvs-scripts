@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.14
+   KVS — Site Scripts v3.1.15
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -24,6 +24,7 @@
    18. Best Sellers — merchandising blocks on category pages
    19. Product Page Related Links — "Shop More Like This" on PDPs
    20. Hub Links — "Shop by Category" on hub pages
+   21. OG & Twitter Card Tags — site-wide social sharing meta
    ============================================================ */
 
 (function() {
@@ -1184,6 +1185,69 @@
   }
 
   /* ──────────────────────────────────────
+     21. OG & TWITTER CARD TAGS
+     Injects Open Graph and Twitter Card
+     meta tags on every page. SPA-safe:
+     updates existing tags on URL change.
+  ────────────────────────────────────── */
+
+  function initOGTags() {
+    var OG_IMAGE = 'https://d2j6dbq0eux0bg.cloudfront.net/images/84286959/products/696061172/5625559086.png';
+    var SITE_NAME = 'Kootenay Vape Shops';
+    var FALLBACK_DESC = 'Shop online with Kootenay Vape Shops. 19+ only. Serving BC with pickup at Trail, Creston, Grand Forks, and Kimberley.';
+
+    // Helper: set or create a meta tag (upsert pattern — never duplicates)
+    function setMeta(attr, key, content) {
+      var selector = 'meta[' + attr + '="' + key + '"]';
+      var el = document.querySelector(selector);
+      if (el) {
+        el.setAttribute('content', content);
+      } else {
+        el = document.createElement('meta');
+        el.setAttribute(attr, key);
+        el.setAttribute('content', content);
+        document.head.appendChild(el);
+      }
+    }
+
+    // URL: canonical if present, else location without query/hash
+    var canonical = document.querySelector('link[rel="canonical"]');
+    var url = canonical ? canonical.href : window.location.origin + window.location.pathname;
+
+    // Title: strip suffixes added by Section 11 and Ecwid defaults
+    var title = (document.title || '')
+      .replace(/\s*\|.*$/, '')
+      .replace(/\s*[–—-]\s*Kootenay.*$/i, '')
+      .trim() || SITE_NAME;
+
+    // Description: use existing meta description or fallback
+    var descMeta = document.querySelector('meta[name="description"]');
+    var description = (descMeta && descMeta.content && descMeta.content.trim())
+      ? descMeta.content.trim()
+      : FALLBACK_DESC;
+
+    // Type: "product" on PDP, "website" otherwise
+    var path = window.location.pathname;
+    var ogType = /^\/products\/.+-p\d+$/i.test(path) ? 'product' : 'website';
+
+    // OG tags
+    setMeta('property', 'og:url', url);
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', description);
+    setMeta('property', 'og:site_name', SITE_NAME);
+    setMeta('property', 'og:type', ogType);
+    setMeta('property', 'og:image', OG_IMAGE);
+    setMeta('property', 'og:image:width', '1200');
+    setMeta('property', 'og:image:height', '630');
+
+    // Twitter tags
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    setMeta('name', 'twitter:title', title);
+    setMeta('name', 'twitter:description', description);
+    setMeta('name', 'twitter:image', OG_IMAGE);
+  }
+
+  /* ──────────────────────────────────────
      16. SPA NAVIGATION WATCHER (was 15)
      Re-injects category blocks when the
      URL changes without a full reload.
@@ -1202,6 +1266,7 @@
           initCategoryHelper();
           initHubLinks();
           initProductRelatedLinks();
+          initOGTags();
         }, 1500);
       }
     }, 1000);
@@ -1279,6 +1344,7 @@
         initCategoryHelper();
         initHubLinks();
         initProductRelatedLinks();
+        initOGTags();
         fixStaticSchema();
         watchCategoryNav();
       }, 2500);
@@ -1301,12 +1367,13 @@
       initCategoryHelper();
       initHubLinks();
       initProductRelatedLinks();
+      initOGTags();
       fixStaticSchema();
       watchCategoryNav();
     }, 2500);
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.14';
+  window.__KVS_VERSION__ = '3.1.15';
 
 })();
