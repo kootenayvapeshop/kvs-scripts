@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.11
+   KVS — Site Scripts v3.1.12
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -23,6 +23,7 @@
    17. Fix Static Schema — patch Ecwid VapeShop → Store
    18. Best Sellers — merchandising blocks on category pages
    19. Product Page Related Links — "Shop More Like This" on PDPs
+   20. Hub Links — "Shop by Category" on hub pages
    ============================================================ */
 
 (function() {
@@ -809,6 +810,78 @@
   }
 
   /* ──────────────────────────────────────
+     20. HUB LINKS — "Shop by Category"
+     blocks on the two hub/parent pages.
+  ────────────────────────────────────── */
+
+  function initHubLinks() {
+    // Remove existing hub blocks (SPA-safe)
+    var oldBlocks = document.querySelectorAll('[id^="kvs-hub-links-"]');
+    for (var r = 0; r < oldBlocks.length; r++) oldBlocks[r].remove();
+
+    var path = window.location.pathname;
+
+    var hubs = {
+      '/products/Vape-Hardware-c181465792': {
+        id: 'kvs-hub-links-181465792',
+        items: [
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod kits and systems'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware'],
+          ['/products/Box-Mod-Devices-c181460124', 'Box Mod Devices', 'Regulated mods and starter kits'],
+          ['/products/Tanks-c181460868', 'Tanks', 'Sub-ohm and MTL tanks'],
+          ['/products/Replacements-c181460125', 'Replacements', 'Coils, pods, glass, and device parts'],
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/All-In-One-Pods-c181465298', 'All-In-One Pods', 'Integrated pod cartridges'],
+          ['/products/Empty-Pods-c181465795', 'Empty Pods', 'Refillable empty pod cartridges'],
+          ['/products/Batteries-&-Chargers-c181465793', 'Batteries & Chargers', 'External batteries and charging docks']
+        ]
+      },
+      '/products/e-Liquid-&-Disposables-c181465295': {
+        id: 'kvs-hub-links-181465295',
+        items: [
+          ['/products/Disposables-c181465790', 'Disposable Vapes', 'Ready-to-use devices in hundreds of flavours'],
+          ['/products/Salt-Nic-c181460122', 'Salt Nic E-Liquid', 'Smooth nicotine salt juice in 10mg and 20mg'],
+          ['/products/Freebase-c181457932', 'Freebase E-Liquid', 'Traditional e-juice from 0mg to 12mg'],
+          ['/products/Closed-Pods-c181465541', 'Closed Pods', 'Pre-filled pod cartridges and refills'],
+          ['/products/Open-Pod-Devices-c181465297', 'Open Pod Devices', 'Refillable pod systems for daily use'],
+          ['/products/Closed-Pod-Devices-c181465296', 'Closed Pod Devices', 'Pre-filled pod system hardware'],
+          ['/products/Coils-c181465794', 'Coils', 'Replacement coils for all major devices'],
+          ['/products/Vape-Hardware-c181465792', 'Vape Hardware', 'Mods, kits, tanks, and pod systems']
+        ]
+      }
+    };
+
+    var data = hubs[path];
+    if (!data) return;
+
+    var B = '\u2022';
+    var D = '\u2014';
+    var html = '<p style="margin-bottom:0.3rem;"><strong>SHOP BY CATEGORY</strong></p>';
+    for (var i = 0; i < data.items.length; i++) {
+      var item = data.items[i];
+      html += '<p style="margin:0.15rem 0;">' + B + ' <a href="' + item[0] + '">' + item[1] + '</a> ' + D + ' ' + item[2] + '</p>';
+    }
+
+    var block = document.createElement('div');
+    block.id = data.id;
+    block.style.cssText = 'max-width:960px;margin:1rem auto 1.5rem;padding:0 1rem;color:#ccc;font-size:0.95rem;line-height:1.6;';
+    block.innerHTML = html;
+
+    // Insert after .grid__description, before any existing category blocks
+    var desc = document.querySelector('.grid__description');
+    var catLinks = document.getElementById('kvs-category-links');
+    if (desc) {
+      var insertBefore = catLinks && catLinks.parentElement === desc.parentElement ? catLinks : desc.nextSibling;
+      desc.parentElement.insertBefore(block, insertBefore);
+      return;
+    }
+    var grid = document.querySelector('.ec-store') || document.querySelector('[class*="product"]');
+    if (grid) {
+      grid.parentElement.insertBefore(block, grid);
+    }
+  }
+
+  /* ──────────────────────────────────────
      15. CATEGORY HELPER — Disambiguation
      block for easily confused categories.
   ────────────────────────────────────── */
@@ -1127,6 +1200,7 @@
           initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
+          initHubLinks();
           initProductRelatedLinks();
         }, 1500);
       }
@@ -1232,6 +1306,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.11';
+  window.__KVS_VERSION__ = '3.1.12';
 
 })();
