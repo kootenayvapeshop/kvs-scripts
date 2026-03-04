@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.9
+   KVS — Site Scripts v3.1.10
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -884,20 +884,21 @@
     var categoryId = catMatch[1];
 
     // Top 12 best sellers by 30-day POS unit sales, keyed by categoryId
+    // @kvs-bestsellers-data-start
     var data = {
-      '181465790': [
-        ['/products/Fog-Formula-1600-Disposable-p564264046', 'Fog Formula 1600 Disposable'],
-        ['/products/ABT-32-Hybrid-Disposable-p743634342', 'ABT 32 Hybrid Disposable'],
-        ['/products/Fog-Formula-PRO-Disposable-p790975296', 'Fog Formula PRO Disposable'],
-        ['/products/Rifbar-MIXPRO-Disposable-p796162346', 'Rifbar MIXPRO Disposable'],
-        ['/products/Maskking-IceX-40k-p815813903', 'Maskking IceX 40k'],
-        ['/products/Hi5-PRIME-Hybrid-Disposable-p726861181', 'Hi5 PRIME Hybrid Disposable'],
-        ['/products/Flavour-Beast-HYDRA-18k-Disposable-p709597213', 'Flavour Beast HYDRA 18k Disposable'],
-        ['/products/Vabeen-POLAR-BEAST-Disposable-p781112324', 'Vabeen POLAR BEAST Disposable'],
-        ['/products/Vapmod-SNIPER-Disposable-p698017415', 'Vapmod SNIPER Disposable'],
-        ['/products/Allo-ULTRA-25K-Disposable-p757019509', 'Allo ULTRA 25K Disposable'],
-        ['/products/Hi5-SMOKELESS-Hybrid-Disposable-p749098340', 'Hi5 SMOKELESS Hybrid Disposable'],
-        ['/products/Vice-CLICK-Disposable-p771069239', 'Vice CLICK Disposable']
+      '181457932': [
+        ['/products/Vital-Freebase-p529163078', 'Vital [Freebase]'],
+        ['/products/Juiced-Up-Freebase-p529154745', 'Juiced Up [Freebase]'],
+        ['/products/Lemon-Drop-Freebase-p529155475', 'Lemon Drop [Freebase]'],
+        ['/products/Black-Mamba-Freebase-p529149993', 'Black Mamba [Freebase]'],
+        ['/products/Iced-Up-Freebase-p529159864', 'Iced Up [Freebase]'],
+        ['/products/Vibe-by-KVS-Freebase-p567614891', 'Vibe by KVS [Freebase]'],
+        ['/products/Banana-Bang-Freebase-p529165524', 'Banana Bang [Freebase]'],
+        ['/products/Twelve-Monkeys-Freebase-p529160332', 'Twelve Monkeys [Freebase]'],
+        ['/products/Flavour-Beast-eLiquid-Freebase-p719770896', 'Flavour Beast eLiquid [Freebase]'],
+        ['/products/Blackwood-Freebase-p529163296', 'Blackwood [Freebase]'],
+        ['/products/Kapow-Freebase-p529155490', 'Kapow [Freebase]'],
+        ['/products/Lux-Freebase-p629426419', 'Lux [Freebase]']
       ],
       '181460122': [
         ['/products/Flavour-Beast-eLiquid-Salt-p559110534', 'Flavour Beast eLiquid [Salt]'],
@@ -913,6 +914,28 @@
         ['/products/Naked-100-NKD100-Salt-p529155478', 'Naked 100 (NKD100) [Salt]'],
         ['/products/Blackwood-Salt-p529161568', 'Blackwood [Salt]']
       ],
+      '181465541': [
+        ['/products/Flavour-Beast-Pods-p529159837', 'Flavour Beast Pods'],
+        ['/products/STLTH-Pods-p529163302', 'STLTH Pods'],
+        ['/products/Flavour-Beast-LEVEL-X-G2-Disposable-Top-p772435733', 'Flavour Beast LEVEL X G2 Disposable Top'],
+        ['/products/Allo-Pods-p529149977', 'Allo Pods'],
+        ['/products/Rufpuf-RIPPER-X-Disposable-Top-p777590492', 'Rufpuf RIPPER X Disposable Top'],
+        ['/products/Rufpuf-RIPPER-X-Intense-Disposable-Top-p750983258', 'Rufpuf RIPPER X Intense Disposable Top']
+      ],
+      '181465790': [
+        ['/products/Fog-Formula-1600-Disposable-p564264046', 'Fog Formula 1600 Disposable'],
+        ['/products/ABT-32-Hybrid-Disposable-p743634342', 'ABT 32 Hybrid Disposable'],
+        ['/products/Fog-Formula-PRO-Disposable-p790975296', 'Fog Formula PRO Disposable'],
+        ['/products/Rifbar-MIXPRO-Disposable-p796162346', 'Rifbar MIXPRO Disposable'],
+        ['/products/Maskking-IceX-40k-p815813903', 'Maskking IceX 40k'],
+        ['/products/Hi5-PRIME-Hybrid-Disposable-p726861181', 'Hi5 PRIME Hybrid Disposable'],
+        ['/products/Flavour-Beast-HYDRA-18k-Disposable-p709597213', 'Flavour Beast HYDRA 18k Disposable'],
+        ['/products/Vabeen-POLAR-BEAST-Disposable-p781112324', 'Vabeen POLAR BEAST Disposable'],
+        ['/products/Vapmod-SNIPER-Disposable-p698017415', 'Vapmod SNIPER Disposable'],
+        ['/products/Allo-ULTRA-25K-Disposable-p757019509', 'Allo ULTRA 25K Disposable'],
+        ['/products/Hi5-SMOKELESS-Hybrid-Disposable-p749098340', 'Hi5 SMOKELESS Hybrid Disposable'],
+        ['/products/Vice-CLICK-Disposable-p771069239', 'Vice CLICK Disposable']
+      ],
       '181465794': [
         ['/products/VOOPOO-PNPx-Coils-p691278505', 'VOOPOO PNPx Coils'],
         ['/products/Smok-RPM2-Coil-x1-p529161545', 'Smok RPM2 Coil [x1]'],
@@ -924,32 +947,11 @@
         ['/products/Vaporesso-NRG-GT-GT-Core-Coil-x1-p529165528', 'Vaporesso NRG GT (GT Core) Coil [x1]'],
         ['/products/HorizonTech-AQUILA-Coil-x1-p529153955', 'HorizonTech AQUILA Coil [x1]'],
         ['/products/Smok-RPM-Coil-x1-p529154702', 'Smok RPM Coil [x1]'],
-        ['/products/HorizonTech-SAKERZ-Replacement-Coil-x1-High-Performance-Options-p529153249', 'HorizonTech SAKERZ Coil [x1]'],
+        ['/products/HorizonTech-SAKERZ-Replacement-Coil-x1-High-Performance-Options-p529153249', 'HorizonTech SAKERZ Replacement Coil (x1) — High-Performance Options'],
         ['/products/HorizonTech-FALCON-APV-Coil-x1-p589660501', 'HorizonTech FALCON APV Coil [x1]']
-      ],
-      '181457932': [
-        ['/products/Vital-Freebase-p529163078', 'Vital [Freebase]'],
-        ['/products/Juiced-Up-Freebase-p529154745', 'Juiced Up [Freebase]'],
-        ['/products/Lemon-Drop-Freebase-p529155475', 'Lemon Drop [Freebase]'],
-        ['/products/Black-Mamba-Freebase-p529149993', 'Black Mamba [Freebase]'],
-        ['/products/Iced-Up-Freebase-p529159864', 'Iced Up [Freebase]'],
-        ['/products/Vibe-by-KVS-Freebase-p567614891', 'Vibe by KVS [Freebase]'],
-        ['/products/Banana-Bang-Freebase-p529165524', 'Banana Bang [Freebase]'],
-        ['/products/Twelve-Monkeys-Freebase-p529160332', 'Twelve Monkeys [Freebase]'],
-        ['/products/Flavour-Beast-eLiquid-Freebase-p719770896', 'Flavour Beast eLiquid [Freebase]'],
-        ['/products/Blackwood-Freebase-p529163296', 'Blackwood [Freebase]'],
-        ['/products/Kapow-Freebase-p529155490', 'Kapow [Freebase]'],
-        ['/products/Lux-Freebase-p629426419', 'Lux [Freebase]']
-      ],
-      '181465541': [
-        ['/products/Flavour-Beast-Pods-p529159837', 'Flavour Beast Pods'],
-        ['/products/STLTH-Pods-p529163302', 'STLTH Pods'],
-        ['/products/Flavour-Beast-LEVEL-X-G2-Disposable-Top-p772435733', 'Flavour Beast LEVEL X G2 Disposable Top'],
-        ['/products/Allo-Pods-p529149977', 'Allo Pods'],
-        ['/products/Rufpuf-RIPPER-X-Disposable-Top-p777590492', 'Rufpuf RIPPER X Disposable Top'],
-        ['/products/Rufpuf-RIPPER-X-Intense-Disposable-Top-p750983258', 'Rufpuf RIPPER X Intense Disposable Top']
       ]
     };
+    // @kvs-bestsellers-data-end
 
     var items = data[categoryId];
     // Truthfulness guard: need at least 3 POS-driven items to render
@@ -1109,6 +1111,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.9';
+  window.__KVS_VERSION__ = '3.1.10';
 
 })();
