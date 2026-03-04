@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.13
+   KVS — Site Scripts v3.1.14
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -1212,7 +1212,6 @@
   ────────────────────────────────────── */
 
   function fixStaticSchema() {
-    if (window.location.pathname !== '/' && window.location.pathname !== '/home') return;
     var patched = false;
     var scripts = document.querySelectorAll('script[type="application/ld+json"]');
     scripts.forEach(function(s) {
@@ -1308,6 +1307,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.13';
+  window.__KVS_VERSION__ = '3.1.14';
 
 })();
