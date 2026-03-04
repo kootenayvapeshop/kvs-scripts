@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.8
+   KVS — Site Scripts v3.1.9
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -926,6 +926,28 @@
         ['/products/Smok-RPM-Coil-x1-p529154702', 'Smok RPM Coil [x1]'],
         ['/products/HorizonTech-SAKERZ-Replacement-Coil-x1-High-Performance-Options-p529153249', 'HorizonTech SAKERZ Coil [x1]'],
         ['/products/HorizonTech-FALCON-APV-Coil-x1-p589660501', 'HorizonTech FALCON APV Coil [x1]']
+      ],
+      '181457932': [
+        ['/products/Vital-Freebase-p529163078', 'Vital [Freebase]'],
+        ['/products/Juiced-Up-Freebase-p529154745', 'Juiced Up [Freebase]'],
+        ['/products/Lemon-Drop-Freebase-p529155475', 'Lemon Drop [Freebase]'],
+        ['/products/Black-Mamba-Freebase-p529149993', 'Black Mamba [Freebase]'],
+        ['/products/Iced-Up-Freebase-p529159864', 'Iced Up [Freebase]'],
+        ['/products/Vibe-by-KVS-Freebase-p567614891', 'Vibe by KVS [Freebase]'],
+        ['/products/Banana-Bang-Freebase-p529165524', 'Banana Bang [Freebase]'],
+        ['/products/Twelve-Monkeys-Freebase-p529160332', 'Twelve Monkeys [Freebase]'],
+        ['/products/Flavour-Beast-eLiquid-Freebase-p719770896', 'Flavour Beast eLiquid [Freebase]'],
+        ['/products/Blackwood-Freebase-p529163296', 'Blackwood [Freebase]'],
+        ['/products/Kapow-Freebase-p529155490', 'Kapow [Freebase]'],
+        ['/products/Lux-Freebase-p629426419', 'Lux [Freebase]']
+      ],
+      '181465541': [
+        ['/products/Flavour-Beast-Pods-p529159837', 'Flavour Beast Pods'],
+        ['/products/STLTH-Pods-p529163302', 'STLTH Pods'],
+        ['/products/Flavour-Beast-LEVEL-X-G2-Disposable-Top-p772435733', 'Flavour Beast LEVEL X G2 Disposable Top'],
+        ['/products/Allo-Pods-p529149977', 'Allo Pods'],
+        ['/products/Rufpuf-RIPPER-X-Disposable-Top-p777590492', 'Rufpuf RIPPER X Disposable Top'],
+        ['/products/Rufpuf-RIPPER-X-Intense-Disposable-Top-p750983258', 'Rufpuf RIPPER X Intense Disposable Top']
       ]
     };
 
@@ -1087,6 +1109,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.8';
+  window.__KVS_VERSION__ = '3.1.9';
 
 })();
