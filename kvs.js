@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.7
+   KVS — Site Scripts v3.1.8
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -912,11 +912,26 @@
         ['/products/Suavae-Salt-p529154733', 'Suavae [Salt]'],
         ['/products/Naked-100-NKD100-Salt-p529155478', 'Naked 100 (NKD100) [Salt]'],
         ['/products/Blackwood-Salt-p529161568', 'Blackwood [Salt]']
+      ],
+      '181465794': [
+        ['/products/VOOPOO-PNPx-Coils-p691278505', 'VOOPOO PNPx Coils'],
+        ['/products/Smok-RPM2-Coil-x1-p529161545', 'Smok RPM2 Coil [x1]'],
+        ['/products/Smok-RPM3-Coil-x1-p529155451', 'Smok RPM3 Coil [x1]'],
+        ['/products/Smok-LP2-Coil-x1-p529163297', 'Smok LP2 Coil [x1]'],
+        ['/products/Smok-LP1-Coil-x1-p529155477', 'Smok LP1 Coil [x1]'],
+        ['/products/VooPoo-PNP-Coil-x1-p529161586', 'VooPoo PNP Coil [x1]'],
+        ['/products/Smok-TFV9-Coil-x1-p529159840', 'Smok TFV9 Coil [x1]'],
+        ['/products/Vaporesso-NRG-GT-GT-Core-Coil-x1-p529165528', 'Vaporesso NRG GT (GT Core) Coil [x1]'],
+        ['/products/HorizonTech-AQUILA-Coil-x1-p529153955', 'HorizonTech AQUILA Coil [x1]'],
+        ['/products/Smok-RPM-Coil-x1-p529154702', 'Smok RPM Coil [x1]'],
+        ['/products/HorizonTech-SAKERZ-Replacement-Coil-x1-High-Performance-Options-p529153249', 'HorizonTech SAKERZ Coil [x1]'],
+        ['/products/HorizonTech-FALCON-APV-Coil-x1-p589660501', 'HorizonTech FALCON APV Coil [x1]']
       ]
     };
 
     var items = data[categoryId];
-    if (!items || items.length === 0) return;
+    // Truthfulness guard: need at least 3 POS-driven items to render
+    if (!items || items.length < 3) return;
 
     var B = '\u2022';
     var blockStyle = 'max-width:960px;margin:0.75rem auto;padding:0 1rem;color:#ccc;font-size:0.95rem;line-height:1.6;';
@@ -1072,6 +1087,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.7';
+  window.__KVS_VERSION__ = '3.1.8';
 
 })();
