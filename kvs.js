@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.16
+   KVS — Site Scripts v3.1.17
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -603,10 +603,11 @@
   }
 
   /* ──────────────────────────────────────
-     12. CATEGORY META DESCRIPTION FIX
-     Overrides the generic site-wide meta
-     description on category pages with
-     the correct category-specific text.
+     12. CATEGORY META DESCRIPTION FALLBACK
+     Safety net: only injects a meta
+     description if the API-set one is
+     missing or too short (<50 chars).
+     Source of truth = Ecwid Catalog API.
   ────────────────────────────────────── */
   function initCategoryMeta() {
     var path = window.location.pathname;
@@ -624,8 +625,15 @@
     var desc = metas[path];
     if (!desc) return;
     var meta = document.querySelector('meta[name="description"]');
+    var existing = meta ? (meta.getAttribute('content') || '').trim() : '';
+    if (existing.length >= 50) return; // API-set description present — do not overwrite
     if (meta) {
       meta.setAttribute('content', desc);
+    } else {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      meta.setAttribute('content', desc);
+      document.head.appendChild(meta);
     }
   }
 
@@ -1401,6 +1409,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.16';
+  window.__KVS_VERSION__ = '3.1.17';
 
 })();
