@@ -1342,8 +1342,9 @@
       '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
       '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
     };
-    // Fix &amp; encoding: if path contains literal "&amp;" redirect to clean slug
-    if (path.indexOf('&amp;') !== -1 && path.indexOf('c181465295') !== -1) {
+    // Redirect old e-Liquid & Disposables slug to clean slug (& and %26 variants)
+    if (path.indexOf('c181465295') !== -1 &&
+        (path.indexOf('e-Liquid-&-Disposables') !== -1 || path.indexOf('e-Liquid-%26-Disposables') !== -1)) {
       window.location.replace('https://kootenayvapeshop.com/products/e-liquid-and-disposables-c181465295');
       return;
     }
