@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.18
+   KVS — Site Scripts v3.1.19
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -1338,16 +1338,13 @@
     var path = window.location.pathname;
     // Old category ID → current category path
     // Source: GSC CTR report 2026-03-04 (378 combined wasted impressions)
+    // NOTE: target paths must NOT appear as keys (loop safety)
     var redirects = {
-      '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
-      '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
+      '/products/Disposables-c145328391':              '/products/Disposables-c181465790',                  // old Disposables (216 imp, 0.93% CTR)
+      '/products/Hardware-c145323213':                 '/products/Vape-Hardware-c181465792',                 // old Hardware (162 imp, 0.00% CTR)
+      '/products/e-Liquid-&-Disposables-c181465295':   '/products/e-liquid-and-disposables-c181465295',     // legacy & slug
+      '/products/e-Liquid-%26-Disposables-c181465295': '/products/e-liquid-and-disposables-c181465295'      // legacy %26 slug
     };
-    // Redirect old e-Liquid & Disposables slug to clean slug (& and %26 variants)
-    if (path.indexOf('c181465295') !== -1 &&
-        (path.indexOf('e-Liquid-&-Disposables') !== -1 || path.indexOf('e-Liquid-%26-Disposables') !== -1)) {
-      window.location.replace('https://kootenayvapeshop.com/products/e-liquid-and-disposables-c181465295');
-      return;
-    }
     var target = redirects[path];
     if (target) {
       window.location.replace('https://kootenayvapeshop.com' + target);
@@ -1418,6 +1415,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.18';
+  window.__KVS_VERSION__ = '3.1.19';
 
 })();
