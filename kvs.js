@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.17
+   KVS — Site Scripts v3.1.18
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -65,7 +65,8 @@
       '#kvs-age-no{background:transparent;color:rgba(144,144,176,0.7);border:1px solid rgba(155,45,255,0.25);}',
       '#kvs-age-no:hover{border-color:rgba(155,45,255,0.5);color:rgba(240,240,255,0.8);}',
       '#kvs-age-gate-legal{margin-top:1.5rem;font-size:0.68rem;color:rgba(144,144,176,0.45);line-height:1.5;letter-spacing:0.02em;}',
-      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}'
+      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}',
+      'body.kvs-agegate-open .mcforms-wrapper{pointer-events:none;}'
     ].join('');
     document.head.appendChild(style);
 
@@ -94,6 +95,7 @@
     ].join('');
 
     document.documentElement.style.overflow = 'hidden';
+    document.body.classList.add('kvs-agegate-open');
     document.body.appendChild(gate);
 
     requestAnimationFrame(function() {
@@ -109,6 +111,7 @@
       setTimeout(function() {
         gate.remove();
         document.documentElement.style.overflow = '';
+        document.body.classList.remove('kvs-agegate-open');
       }, 300);
     });
 
@@ -1339,6 +1342,11 @@
       '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
       '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
     };
+    // Fix &amp; encoding: if path contains literal "&amp;" redirect to clean slug
+    if (path.indexOf('&amp;') !== -1 && path.indexOf('c181465295') !== -1) {
+      window.location.replace('https://kootenayvapeshop.com/products/e-liquid-and-disposables-c181465295');
+      return;
+    }
     var target = redirects[path];
     if (target) {
       window.location.replace('https://kootenayvapeshop.com' + target);
@@ -1409,6 +1417,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.17';
+  window.__KVS_VERSION__ = '3.1.18';
 
 })();
