@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.19
+   KVS — Site Scripts v3.1.18
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -65,8 +65,7 @@
       '#kvs-age-no{background:transparent;color:rgba(144,144,176,0.7);border:1px solid rgba(155,45,255,0.25);}',
       '#kvs-age-no:hover{border-color:rgba(155,45,255,0.5);color:rgba(240,240,255,0.8);}',
       '#kvs-age-gate-legal{margin-top:1.5rem;font-size:0.68rem;color:rgba(144,144,176,0.45);line-height:1.5;letter-spacing:0.02em;}',
-      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}',
-      'body.kvs-agegate-open .mcforms-wrapper{pointer-events:none;}'
+      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}'
     ].join('');
     document.head.appendChild(style);
 
@@ -95,7 +94,6 @@
     ].join('');
 
     document.documentElement.style.overflow = 'hidden';
-    document.body.classList.add('kvs-agegate-open');
     document.body.appendChild(gate);
 
     requestAnimationFrame(function() {
@@ -111,7 +109,6 @@
       setTimeout(function() {
         gate.remove();
         document.documentElement.style.overflow = '';
-        document.body.classList.remove('kvs-agegate-open');
       }, 300);
     });
 
@@ -952,6 +949,37 @@
   }
 
   /* ──────────────────────────────────────
+     23. CATEGORY DESCRIPTION REORDER
+     Moves category description below the
+     product grid on category pages. Ecwid
+     renders description above products with
+     no admin setting to change position.
+  ────────────────────────────────────── */
+  function initCategoryDescReorder() {
+    if (!/\/products\/.*-c\d+/.test(window.location.pathname)) return;
+    var grid = document.querySelector('.ec-grid.grid__wrap');
+    if (!grid) return;
+    // Already reordered by a previous run (SPA nav)
+    if (grid.getAttribute('data-kvs-desc-reordered')) return;
+    var children = Array.from(grid.children);
+    // Find the product grid child (contains .grid-product elements)
+    var productGridChild = null;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].querySelector('.grid-product') || children[i].querySelector('.grid__sort')) {
+        productGridChild = children[i];
+        break;
+      }
+    }
+    if (!productGridChild) return;
+    // Move all children that precede the product grid to after it
+    for (var j = 0; j < children.length; j++) {
+      if (children[j] === productGridChild) break;
+      grid.appendChild(children[j]);
+    }
+    grid.setAttribute('data-kvs-desc-reordered', 'true');
+  }
+
+  /* ──────────────────────────────────────
      18. BEST SELLERS
      Injects POS-driven best seller block
      on category pages (top 12 by 30-day
@@ -1277,6 +1305,7 @@
           initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
+          initCategoryDescReorder();
           initHubLinks();
           initProductRelatedLinks();
           initOGTags();
@@ -1338,12 +1367,9 @@
     var path = window.location.pathname;
     // Old category ID → current category path
     // Source: GSC CTR report 2026-03-04 (378 combined wasted impressions)
-    // NOTE: target paths must NOT appear as keys (loop safety)
     var redirects = {
-      '/products/Disposables-c145328391':              '/products/Disposables-c181465790',                  // old Disposables (216 imp, 0.93% CTR)
-      '/products/Hardware-c145323213':                 '/products/Vape-Hardware-c181465792',                 // old Hardware (162 imp, 0.00% CTR)
-      '/products/e-Liquid-&-Disposables-c181465295':   '/products/e-liquid-and-disposables-c181465295',     // legacy & slug
-      '/products/e-Liquid-%26-Disposables-c181465295': '/products/e-liquid-and-disposables-c181465295'      // legacy %26 slug
+      '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
+      '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
     };
     var target = redirects[path];
     if (target) {
@@ -1383,6 +1409,7 @@
         initBestSellers();
         initCategoryLinks();
         initCategoryHelper();
+        initCategoryDescReorder();
         initHubLinks();
         initProductRelatedLinks();
         initOGTags();
@@ -1406,6 +1433,7 @@
       initBestSellers();
       initCategoryLinks();
       initCategoryHelper();
+      initCategoryDescReorder();
       initHubLinks();
       initProductRelatedLinks();
       initOGTags();
@@ -1415,6 +1443,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.19';
+  window.__KVS_VERSION__ = '3.1.18';
 
 })();
