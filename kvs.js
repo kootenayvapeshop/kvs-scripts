@@ -1369,9 +1369,15 @@
         return;
       }
 
-      // Find the checkout section
-      var checkoutHeading = document.querySelector('.ec-cart__sidebar, .ec-cart-step__wrap, .ec-confirmation');
-      if (!checkoutHeading) return;
+      // Find the cart/checkout container — Ecwid uses ec-cart-step or ec-confirmation
+      // Also match the main productBrowser wrapper as fallback
+      var target = document.querySelector('.ec-cart-step__body, .ec-cart__body, .ec-confirmation, .ec-cart-step__wrap');
+      if (!target) {
+        // Fallback: find "Checkout" button as anchor
+        var btn = document.querySelector('.ec-cart__button--checkout, .form-control__button--submit');
+        if (btn) target = btn.closest('.ec-cart-step') || btn.parentElement;
+      }
+      if (!target) return;
 
       clearInterval(checkInterval);
 
@@ -1391,7 +1397,7 @@
         '<div class="kvs-cart-trust-badge">\u2705 Tested by Our Team</div>'
       ].join('');
 
-      checkoutHeading.parentElement.insertBefore(badges, checkoutHeading.nextSibling);
+      target.parentElement.insertBefore(badges, target.nextSibling);
     }, 800);
 
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
