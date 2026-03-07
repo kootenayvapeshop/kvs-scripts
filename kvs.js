@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.1
+   KVS — Site Scripts v3.2.2
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -29,6 +29,7 @@
    23. Cart Trust Badges — trust indicators on cart/checkout page
    24. Pickup Locations Collapse — keeps pickup section collapsed on PDPs
    25. Shipping Context Line — shipping time estimate below PDP trust badges
+   26. Sticky ATC Bar — floating add-to-cart bar on PDPs
    ============================================================ */
 
 (function() {
@@ -1283,6 +1284,7 @@
           initHubLinks();
           initProductRelatedLinks();
           initOGTags();
+          initStickyATC();
         }, 1500);
       }
     }, 1000);
@@ -1416,8 +1418,8 @@
     var style = document.createElement('style');
     style.id = 'kvs-pickup-collapse';
     style.textContent = [
-      '.outlet-inventory.product-details-module{max-height:44px!important;overflow:hidden!important;transition:max-height 0.3s ease;}',
-      '.outlet-inventory.product-details-module:hover,.outlet-inventory.product-details-module:focus-within{max-height:600px!important;}'
+      '.outlet-inventory.product-details-module{max-height:44px;overflow:hidden;transition:max-height 0.3s ease;}',
+      '.outlet-inventory.product-details-module:hover,.outlet-inventory.product-details-module:focus-within{max-height:600px;}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -1454,6 +1456,114 @@
   }
 
   /* ──────────────────────────────────────
+     26. STICKY ATC BAR
+     Floating "Add to Cart" bar pinned to
+     the bottom of the viewport on PDPs.
+     Shows only when native ATC is scrolled
+     out of view. Hides for age gate, cart,
+     and non-PDP pages. SPA-safe.
+  ────────────────────────────────────── */
+
+  var _stickyATCObserver = null;
+
+  function initStickyATC() {
+    // Cleanup previous instance
+    var old = document.getElementById('kvs-sticky-atc');
+    if (old) old.remove();
+    if (_stickyATCObserver) {
+      _stickyATCObserver.disconnect();
+      _stickyATCObserver = null;
+    }
+
+    // Gate: PDPs only (/products/<slug>-p<id>)
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    // Inject CSS once
+    if (!document.getElementById('kvs-sticky-atc-style')) {
+      var style = document.createElement('style');
+      style.id = 'kvs-sticky-atc-style';
+      style.textContent = [
+        '#kvs-sticky-atc{position:fixed;bottom:0;left:0;right:0;z-index:99999;display:flex;align-items:center;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:rgba(14,14,26,0.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(155,45,255,0.25);box-shadow:0 -4px 20px rgba(0,0,0,0.4);transform:translateY(100%);transition:transform 0.3s ease;font-family:"Barlow","Arial",sans-serif;}',
+        '#kvs-sticky-atc.kvs-sticky-visible{transform:translateY(0);}',
+        '#kvs-sticky-atc__name{flex:1;min-width:0;font-size:0.85rem;color:rgba(240,240,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px;}',
+        '#kvs-sticky-atc__price{font-size:0.85rem;color:rgba(144,144,176,0.85);margin-right:12px;white-space:nowrap;}',
+        '#kvs-sticky-atc-btn{flex-shrink:0;padding:8px 20px;border:none;border-radius:50px;background:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b);color:#fff;font-family:"Barlow","Arial",sans-serif;font-weight:700;font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}',
+        '#kvs-sticky-atc-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(155,45,255,0.5);}',
+        '@media(min-width:768px){#kvs-sticky-atc{padding:12px 24px;padding-bottom:12px;}#kvs-sticky-atc__name{font-size:0.9rem;}#kvs-sticky-atc-btn{padding:10px 28px;font-size:0.9rem;}}'
+      ].join('');
+      document.head.appendChild(style);
+    }
+
+    // Poll for native ATC button (Ecwid renders async)
+    var checkInterval = setInterval(function() {
+      if (document.getElementById('kvs-sticky-atc')) {
+        clearInterval(checkInterval);
+        return;
+      }
+
+      // Don't show if age gate is active
+      if (document.getElementById('kvs-age-gate')) return;
+
+      var nativeATC = document.querySelector('.details-product-purchase__add-to-bag');
+      if (!nativeATC) return;
+
+      clearInterval(checkInterval);
+
+      // Gather product info
+      var titleEl = document.querySelector('.product-details__product-title')
+        || document.querySelector('.product-details h1')
+        || document.querySelector('h1');
+      var productName = titleEl ? titleEl.textContent.trim() : '';
+      if (productName.length > 40) productName = productName.substring(0, 38) + '\u2026';
+
+      var priceEl = document.querySelector('.details-product-purchase__price .ec-price-item')
+        || document.querySelector('.details-product-purchase__price');
+      var price = '';
+      if (priceEl) {
+        var pm = (priceEl.textContent || '').trim().match(/\$[\d,.]+/);
+        if (pm) price = pm[0];
+      }
+
+      // Build bar
+      var bar = document.createElement('div');
+      bar.id = 'kvs-sticky-atc';
+      bar.setAttribute('role', 'complementary');
+      bar.setAttribute('aria-label', 'Quick add to cart');
+      var nameHtml = productName
+        ? '<span id="kvs-sticky-atc__name">' + productName.replace(/</g, '&lt;') + '</span>'
+        : '';
+      var priceHtml = price
+        ? '<span id="kvs-sticky-atc__price">' + price.replace(/</g, '&lt;') + '</span>'
+        : '';
+      bar.innerHTML = nameHtml + priceHtml
+        + '<button id="kvs-sticky-atc-btn" type="button">Add to Cart</button>';
+      document.body.appendChild(bar);
+
+      // Wire CTA → native ATC click (scroll to purchase area first for validation visibility)
+      document.getElementById('kvs-sticky-atc-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+        var purchaseArea = nativeATC.closest('.details-product-purchase') || nativeATC;
+        purchaseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function() { nativeATC.click(); }, 400);
+      });
+
+      // IntersectionObserver: show bar only when native ATC is NOT visible
+      _stickyATCObserver = new IntersectionObserver(function(entries) {
+        var nativeVisible = entries[0].isIntersecting;
+        var ageGateOpen = !!document.getElementById('kvs-age-gate');
+        if (nativeVisible || ageGateOpen) {
+          bar.classList.remove('kvs-sticky-visible');
+        } else {
+          bar.classList.add('kvs-sticky-visible');
+        }
+      }, { threshold: 0 });
+      _stickyATCObserver.observe(nativeATC);
+    }, 800);
+
+    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -1475,6 +1585,7 @@
       initStockBadges();
       initTrustBadges();
       initCartTrustBadges();
+      initStickyATC();
       initGTMNoscript();
       // Delayed sections: wait for Instant Site tiles to render
       setTimeout(function() {
@@ -1501,6 +1612,7 @@
     initStockBadges();
     initTrustBadges();
     initCartTrustBadges();
+    initStickyATC();
     initGTMNoscript();
     setTimeout(function() {
       fixKimberleyH1();
@@ -1524,6 +1636,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.1';
+  window.__KVS_VERSION__ = '3.2.2';
 
 })();
