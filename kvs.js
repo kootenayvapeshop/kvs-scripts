@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.1.18
+   KVS — Site Scripts v3.2.0
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -26,6 +26,9 @@
    20. Hub Links — "Shop by Category" on hub pages
    21. OG & Twitter Card Tags — site-wide social sharing meta
    22. Old Category Redirects — 301-style client redirect for deprecated category IDs
+   23. Cart Trust Badges — trust indicators on cart/checkout page
+   24. Pickup Locations Collapse — keeps pickup section collapsed on PDPs
+   25. Shipping Context Line — shipping time estimate below PDP trust badges
    ============================================================ */
 
 (function() {
@@ -65,7 +68,8 @@
       '#kvs-age-no{background:transparent;color:rgba(144,144,176,0.7);border:1px solid rgba(155,45,255,0.25);}',
       '#kvs-age-no:hover{border-color:rgba(155,45,255,0.5);color:rgba(240,240,255,0.8);}',
       '#kvs-age-gate-legal{margin-top:1.5rem;font-size:0.68rem;color:rgba(144,144,176,0.45);line-height:1.5;letter-spacing:0.02em;}',
-      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}'
+      '@media(max-width:480px){#kvs-age-gate-box{padding:2.5rem 1.75rem 2rem;}#kvs-age-gate-logo{font-size:2.2rem;}#kvs-age-gate-title{font-size:1.6rem;}}',
+      'body.kvs-agegate-open .mcforms-wrapper{pointer-events:none;}'
     ].join('');
     document.head.appendChild(style);
 
@@ -94,6 +98,7 @@
     ].join('');
 
     document.documentElement.style.overflow = 'hidden';
+    document.body.classList.add('kvs-agegate-open');
     document.body.appendChild(gate);
 
     requestAnimationFrame(function() {
@@ -109,6 +114,7 @@
       setTimeout(function() {
         gate.remove();
         document.documentElement.style.overflow = '';
+        document.body.classList.remove('kvs-agegate-open');
       }, 300);
     });
 
@@ -949,37 +955,6 @@
   }
 
   /* ──────────────────────────────────────
-     23. CATEGORY DESCRIPTION REORDER
-     Moves category description below the
-     product grid on category pages. Ecwid
-     renders description above products with
-     no admin setting to change position.
-  ────────────────────────────────────── */
-  function initCategoryDescReorder() {
-    if (!/\/products\/.*-c\d+/.test(window.location.pathname)) return;
-    var grid = document.querySelector('.ec-grid.grid__wrap');
-    if (!grid) return;
-    // Already reordered by a previous run (SPA nav)
-    if (grid.getAttribute('data-kvs-desc-reordered')) return;
-    var children = Array.from(grid.children);
-    // Find the product grid child (contains .grid-product elements)
-    var productGridChild = null;
-    for (var i = 0; i < children.length; i++) {
-      if (children[i].querySelector('.grid-product') || children[i].querySelector('.grid__sort')) {
-        productGridChild = children[i];
-        break;
-      }
-    }
-    if (!productGridChild) return;
-    // Move all children that precede the product grid to after it
-    for (var j = 0; j < children.length; j++) {
-      if (children[j] === productGridChild) break;
-      grid.appendChild(children[j]);
-    }
-    grid.setAttribute('data-kvs-desc-reordered', 'true');
-  }
-
-  /* ──────────────────────────────────────
      18. BEST SELLERS
      Injects POS-driven best seller block
      on category pages (top 12 by 30-day
@@ -1305,7 +1280,6 @@
           initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
-          initCategoryDescReorder();
           initHubLinks();
           initProductRelatedLinks();
           initOGTags();
@@ -1367,14 +1341,110 @@
     var path = window.location.pathname;
     // Old category ID → current category path
     // Source: GSC CTR report 2026-03-04 (378 combined wasted impressions)
+    // NOTE: target paths must NOT appear as keys (loop safety)
     var redirects = {
-      '/products/Disposables-c145328391': '/products/Disposables-c181465790',       // old Disposables (216 imp, 0.93% CTR)
-      '/products/Hardware-c145323213':    '/products/Vape-Hardware-c181465792'       // old Hardware (162 imp, 0.00% CTR)
+      '/products/Disposables-c145328391':              '/products/Disposables-c181465790',                  // old Disposables (216 imp, 0.93% CTR)
+      '/products/Hardware-c145323213':                 '/products/Vape-Hardware-c181465792',                 // old Hardware (162 imp, 0.00% CTR)
+      '/products/e-Liquid-&-Disposables-c181465295':   '/products/e-liquid-and-disposables-c181465295',     // legacy & slug
+      '/products/e-Liquid-%26-Disposables-c181465295': '/products/e-liquid-and-disposables-c181465295'      // legacy %26 slug
     };
     var target = redirects[path];
     if (target) {
       window.location.replace('https://kootenayvapeshop.com' + target);
     }
+  }
+
+  /* ──────────────────────────────────────
+     23. CART TRUST BADGES
+     Injects trust badges on the cart/checkout
+     page to maintain buyer confidence.
+  ────────────────────────────────────── */
+
+  function initCartTrustBadges() {
+    if (!/\/cart/i.test(window.location.pathname)) return;
+
+    var checkInterval = setInterval(function() {
+      if (document.querySelector('.kvs-cart-trust-badges')) {
+        clearInterval(checkInterval);
+        return;
+      }
+
+      // Find the checkout section
+      var checkoutHeading = document.querySelector('.ec-cart__sidebar, .ec-cart-step__wrap, .ec-confirmation');
+      if (!checkoutHeading) return;
+
+      clearInterval(checkInterval);
+
+      var style = document.createElement('style');
+      style.textContent = [
+        '.kvs-cart-trust-badges{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;padding:14px 16px;background:rgba(155,45,255,0.06);border:1px solid rgba(155,45,255,0.18);border-radius:10px;}',
+        '.kvs-cart-trust-badge{font-size:0.82rem;color:rgba(220,220,240,0.85);white-space:nowrap;}'
+      ].join('');
+      document.head.appendChild(style);
+
+      var badges = document.createElement('div');
+      badges.className = 'kvs-cart-trust-badges';
+      badges.innerHTML = [
+        '<div class="kvs-cart-trust-badge">\uD83D\uDD12 Secure Checkout</div>',
+        '<div class="kvs-cart-trust-badge">\uD83D\uDE9A Ships Across Canada</div>',
+        '<div class="kvs-cart-trust-badge">\u23F0 Same-Day Dispatch</div>',
+        '<div class="kvs-cart-trust-badge">\u2705 Tested by Our Team</div>'
+      ].join('');
+
+      checkoutHeading.parentElement.insertBefore(badges, checkoutHeading.nextSibling);
+    }, 800);
+
+    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+  }
+
+  /* ──────────────────────────────────────
+     24. PICKUP LOCATIONS COLLAPSE
+     Ensures the pickup locations section
+     on PDPs stays collapsed to keep Add to
+     Cart visible above the fold.
+  ────────────────────────────────────── */
+
+  function initPickupCollapse() {
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    var style = document.createElement('style');
+    style.id = 'kvs-pickup-collapse';
+    style.textContent = [
+      '.outlet-inventory.product-details-module{max-height:44px;overflow:hidden;transition:max-height 0.3s ease;}',
+      '.outlet-inventory.product-details-module:hover,.outlet-inventory.product-details-module:focus-within{max-height:600px;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  /* ──────────────────────────────────────
+     25. SHIPPING CONTEXT LINE
+     Adds a shipping time estimate below
+     trust badges on PDPs.
+  ────────────────────────────────────── */
+
+  function initShippingContext() {
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    var checkInterval = setInterval(function() {
+      if (document.querySelector('.kvs-shipping-context')) {
+        clearInterval(checkInterval);
+        return;
+      }
+
+      var trustBadges = document.querySelector('.kvs-trust-badges');
+      if (!trustBadges) return;
+
+      clearInterval(checkInterval);
+
+      var line = document.createElement('div');
+      line.className = 'kvs-shipping-context';
+      line.style.cssText = 'font-size:0.8rem;color:rgba(144,144,176,0.75);margin-top:8px;line-height:1.5;';
+      line.textContent = '\uD83D\uDCE6 Orders ship within 1 business day \u2022 Delivery across Canada in 2\u20135 days';
+
+      trustBadges.parentElement.insertBefore(line, trustBadges.nextSibling);
+    }, 800);
+
+    setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
 
   /* ──────────────────────────────────────
@@ -1390,11 +1460,15 @@
   // Category meta runs immediately (modifies meta tags, no DOM rendering needed)
   initCategoryMeta();
 
+  // Pickup collapse CSS runs immediately (no DOM needed)
+  initPickupCollapse();
+
   // Everything else waits for DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       initStockBadges();
       initTrustBadges();
+      initCartTrustBadges();
       initGTMNoscript();
       // Delayed sections: wait for Instant Site tiles to render
       setTimeout(function() {
@@ -1409,9 +1483,9 @@
         initBestSellers();
         initCategoryLinks();
         initCategoryHelper();
-        initCategoryDescReorder();
         initHubLinks();
         initProductRelatedLinks();
+        initShippingContext();
         initOGTags();
         fixStaticSchema();
         watchCategoryNav();
@@ -1420,6 +1494,7 @@
   } else {
     initStockBadges();
     initTrustBadges();
+    initCartTrustBadges();
     initGTMNoscript();
     setTimeout(function() {
       fixKimberleyH1();
@@ -1433,9 +1508,9 @@
       initBestSellers();
       initCategoryLinks();
       initCategoryHelper();
-      initCategoryDescReorder();
       initHubLinks();
       initProductRelatedLinks();
+      initShippingContext();
       initOGTags();
       fixStaticSchema();
       watchCategoryNav();
@@ -1443,6 +1518,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.1.18';
+  window.__KVS_VERSION__ = '3.2.0';
 
 })();
