@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.4
+   KVS — Site Scripts v3.2.5
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -160,6 +160,28 @@
   }
 
   /* ──────────────────────────────────────
+     HELPER: E-Liquid Category Detection
+     Returns 'eliquid', 'hardware', or 'unknown'.
+     E-liquid ships to BC, SK, NS, NL only.
+     Hardware ships across Canada.
+     Unknown defaults to restricted (safer).
+  ────────────────────────────────────── */
+  var E_LIQUID_CAT_IDS = { '181465790': 1, '181460122': 1, '181457932': 1 };
+
+  function detectPDPCategory() {
+    var bcLinks = document.querySelectorAll('.breadcrumbs a, .ec-breadcrumbs a, [class*="breadcrumb"] a');
+    for (var i = 0; i < bcLinks.length; i++) {
+      var href = bcLinks[i].getAttribute('href') || '';
+      var m = href.match(/-c(\d+)/);
+      if (m) {
+        if (E_LIQUID_CAT_IDS[m[1]]) return 'eliquid';
+        return 'hardware';
+      }
+    }
+    return 'unknown';
+  }
+
+  /* ──────────────────────────────────────
      3. TRUST BADGES
      Injects trust indicators below the
      Add to Bag button on product pages.
@@ -167,6 +189,12 @@
   ────────────────────────────────────── */
 
   function initTrustBadges() {
+    // SPA cleanup: remove stale badges (category may have changed)
+    var staleBadges = document.querySelector('.kvs-trust-badges');
+    if (staleBadges) staleBadges.remove();
+    var staleShip = document.querySelector('.kvs-shipping-context');
+    if (staleShip) staleShip.remove();
+
     var checkInterval = setInterval(function() {
       // Don't double-inject
       if (document.querySelector('.kvs-trust-badges')) {
@@ -184,11 +212,16 @@
 
       clearInterval(checkInterval);
 
+      var pdpCat = detectPDPCategory();
+      var shipLabel = (pdpCat === 'hardware')
+        ? '\uD83D\uDE9A Ships Across Canada'
+        : '\uD83D\uDE9A Ships to BC, SK, NS & NL';
+
       var badges = document.createElement('div');
       badges.className = 'kvs-trust-badges';
       badges.innerHTML = [
         '<div class="kvs-trust-badge">\uD83D\uDD12 Secure Checkout</div>',
-        '<div class="kvs-trust-badge">\uD83D\uDE9A Ships Across Canada</div>',
+        '<div class="kvs-trust-badge">' + shipLabel + '</div>',
         '<div class="kvs-trust-badge">\u23F0 Same-Day Dispatch</div>',
         '<div class="kvs-trust-badge">\u2705 Tested by Our Team</div>'
       ].join('');
@@ -1286,6 +1319,8 @@
           initHubLinks();
           initProductRelatedLinks();
           initOGTags();
+          initTrustBadges();
+          initShippingContext();
           initStickyATC();
         }, 1500);
       }
@@ -1402,6 +1437,33 @@
       ].join('');
 
       target.parentElement.insertBefore(badges, target.nextSibling);
+
+      // Re-injection watchdog: re-inject if Ecwid re-renders and removes badges
+      var _cartBadgeRetries = 0;
+      var badgeHTML = badges.innerHTML;
+      var recheckInterval = setInterval(function() {
+        if (_cartBadgeRetries >= 3 || document.querySelector('.kvs-cart-trust-badges')) {
+          clearInterval(recheckInterval);
+          return;
+        }
+        var p = window.location.pathname;
+        if (p.indexOf('/cart') === -1 && p.indexOf('/checkout') === -1) {
+          clearInterval(recheckInterval);
+          return;
+        }
+        _cartBadgeRetries++;
+        var newTarget = document.querySelector('.ec-cart-step__body, .ec-cart__body, .ec-confirmation, .ec-cart-step__wrap');
+        if (!newTarget) {
+          var btn2 = document.querySelector('.ec-cart__button--checkout, .form-control__button--submit');
+          if (btn2) newTarget = btn2.closest('.ec-cart-step') || btn2.parentElement;
+        }
+        if (!newTarget) return;
+        var nb = document.createElement('div');
+        nb.className = 'kvs-cart-trust-badges';
+        nb.innerHTML = badgeHTML;
+        newTarget.parentElement.insertBefore(nb, newTarget.nextSibling);
+      }, 2000);
+      setTimeout(function() { clearInterval(recheckInterval); }, 12000);
     }, 800);
 
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
@@ -1434,6 +1496,9 @@
 
   function initShippingContext() {
     if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+    // SPA cleanup: remove stale context line
+    var stale = document.querySelector('.kvs-shipping-context');
+    if (stale) stale.remove();
 
     var checkInterval = setInterval(function() {
       if (document.querySelector('.kvs-shipping-context')) {
@@ -1446,10 +1511,13 @@
 
       clearInterval(checkInterval);
 
+      var pdpCat = detectPDPCategory();
+      var deliveryDest = (pdpCat === 'hardware') ? 'across Canada' : 'to BC, SK, NS & NL';
+
       var line = document.createElement('div');
       line.className = 'kvs-shipping-context';
       line.style.cssText = 'font-size:0.8rem;color:rgba(144,144,176,0.75);margin-top:8px;line-height:1.5;';
-      line.textContent = '\uD83D\uDCE6 Orders ship within 1 business day \u2022 Delivery across Canada in 2\u20135 days';
+      line.textContent = '\uD83D\uDCE6 Orders ship within 1 business day \u2022 Delivery ' + deliveryDest + ' in 2\u20135 days';
 
       trustBadges.parentElement.insertBefore(line, trustBadges.nextSibling);
     }, 800);
@@ -1487,6 +1555,7 @@
   function cleanupStickyATC() {
     var old = document.getElementById('kvs-sticky-atc');
     if (old) old.remove();
+    document.body.style.paddingBottom = '';
     if (_stickyATCObserver) {
       _stickyATCObserver.disconnect();
       _stickyATCObserver = null;
@@ -1596,6 +1665,11 @@
       // Wire CTA → native ATC click (scroll to purchase area first for validation visibility)
       document.getElementById('kvs-sticky-atc-btn').addEventListener('click', function(e) {
         e.preventDefault();
+        try {
+          if (new URLSearchParams(window.location.search).get('kvs_debug') === '1') {
+            console.info('[KVS_DEBUG] sticky_atc_clicked');
+          }
+        } catch (ex) { /* URLSearchParams not supported — no-op */ }
         var purchaseArea = nativeATC.closest('.details-product-purchase') || nativeATC;
         purchaseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(function() { nativeATC.click(); }, 400);
@@ -1615,8 +1689,10 @@
 
         if (nativeVisible || ageGateOpen) {
           bar.classList.remove('kvs-sticky-visible');
+          document.body.style.paddingBottom = '';
         } else {
           bar.classList.add('kvs-sticky-visible');
+          document.body.style.paddingBottom = '60px';
         }
       }, { threshold: 0 });
       _stickyATCObserver.observe(nativeATC);
@@ -1739,6 +1815,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.4';
+  window.__KVS_VERSION__ = '3.2.5';
 
 })();
