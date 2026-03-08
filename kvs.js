@@ -1828,13 +1828,13 @@
         if (!e.target || e.target.tagName !== 'SELECT') return;
         if (e.target.closest('.ec-currency-converter-element')) return;
 
-        // Remove pulse from this select
-        e.target.classList.remove('kvs-option-pulse');
+        // Clear ALL pulse classes (handles Ecwid re-rendering selects)
+        var pulsed = document.querySelectorAll('.kvs-option-pulse');
+        for (var j = 0; j < pulsed.length; j++) pulsed[j].classList.remove('kvs-option-pulse');
 
-        // Check if any unselected remain
+        // Re-query fresh DOM for remaining unselected
         var remaining = getUnselectedOptions();
         if (remaining.length > 0) {
-          // Pulse the next unselected one
           remaining[0].classList.add('kvs-option-pulse');
         } else {
           // All selected — remove hint
