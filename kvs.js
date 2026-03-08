@@ -1764,21 +1764,17 @@
   ────────────────────────────────────── */
 
   var _optionNudgeTimer = null;
-  var _optionNudgeChangeHandler = null;
+  var _optionNudgeCheckInterval = null;
 
   function cleanupOptionNudge() {
     if (_optionNudgeTimer) { clearTimeout(_optionNudgeTimer); _optionNudgeTimer = null; }
+    if (_optionNudgeCheckInterval) { clearInterval(_optionNudgeCheckInterval); _optionNudgeCheckInterval = null; }
     var style = document.getElementById('kvs-option-nudge-style');
     if (style) style.remove();
     var hint = document.getElementById('kvs-option-nudge-hint');
     if (hint) hint.remove();
-    // Remove pulse class from all selects
     var pulsed = document.querySelectorAll('.kvs-option-pulse');
     for (var i = 0; i < pulsed.length; i++) pulsed[i].classList.remove('kvs-option-pulse');
-    if (_optionNudgeChangeHandler) {
-      document.removeEventListener('change', _optionNudgeChangeHandler, true);
-      _optionNudgeChangeHandler = null;
-    }
   }
 
   function initOptionNudge() {
@@ -1804,7 +1800,6 @@
 
     // Delay 2s then check for unselected options
     _optionNudgeTimer = setTimeout(function() {
-      // Re-check: still on PDP? Age gate still closed?
       if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
       if (document.getElementById('kvs-age-gate')) return;
 
@@ -1814,7 +1809,7 @@
       // Pulse the first unselected dropdown
       unselected[0].classList.add('kvs-option-pulse');
 
-      // Add hint above sticky bar (if sticky bar exists)
+      // Add hint in sticky bar
       var stickyBar = document.getElementById('kvs-sticky-atc');
       if (stickyBar && !document.getElementById('kvs-option-nudge-hint')) {
         var hint = document.createElement('div');
@@ -1823,29 +1818,35 @@
         stickyBar.insertBefore(hint, stickyBar.firstChild);
       }
 
-      // Listen for change events to dismiss nudge
-      _optionNudgeChangeHandler = function(e) {
-        if (!e.target || e.target.tagName !== 'SELECT') return;
-        if (e.target.closest('.ec-currency-converter-element')) return;
-
-        // Clear ALL pulse classes (handles Ecwid re-rendering selects)
-        var pulsed = document.querySelectorAll('.kvs-option-pulse');
-        for (var j = 0; j < pulsed.length; j++) pulsed[j].classList.remove('kvs-option-pulse');
-
-        // Re-query fresh DOM for remaining unselected
-        var remaining = getUnselectedOptions();
-        if (remaining.length > 0) {
-          remaining[0].classList.add('kvs-option-pulse');
-        } else {
-          // All selected — remove hint
-          var hint = document.getElementById('kvs-option-nudge-hint');
-          if (hint) hint.remove();
-          document.removeEventListener('change', _optionNudgeChangeHandler, true);
-          _optionNudgeChangeHandler = null;
+      // Poll for selection changes (Ecwid intercepts change events)
+      var checkCount = 0;
+      _optionNudgeCheckInterval = setInterval(function() {
+        checkCount++;
+        // Stop after 30s (60 checks × 500ms)
+        if (checkCount > 60) {
+          cleanupOptionNudge();
+          return;
         }
-      };
-      // Use capture phase — Ecwid stops change event propagation on selects
-      document.addEventListener('change', _optionNudgeChangeHandler, true);
+
+        // Clear stale pulse classes
+        var pulsed = document.querySelectorAll('.kvs-option-pulse');
+        var remaining = getUnselectedOptions();
+
+        if (remaining.length === 0) {
+          // All selected — clean up everything
+          cleanupOptionNudge();
+        } else {
+          // Update pulse to next unselected (handles re-renders)
+          var alreadyPulsed = false;
+          for (var j = 0; j < remaining.length; j++) {
+            if (remaining[j].classList.contains('kvs-option-pulse')) { alreadyPulsed = true; break; }
+          }
+          if (!alreadyPulsed) {
+            for (var k = 0; k < pulsed.length; k++) pulsed[k].classList.remove('kvs-option-pulse');
+            remaining[0].classList.add('kvs-option-pulse');
+          }
+        }
+      }, 500);
     }, 2000);
   }
 
