@@ -166,7 +166,7 @@
      Hardware ships across Canada.
      Unknown defaults to restricted (safer).
   ────────────────────────────────────── */
-  var E_LIQUID_CAT_IDS = { '181465790': 1, '181460122': 1, '181457932': 1 };
+  var E_LIQUID_CAT_IDS = { '181465295': 1, '181465790': 1, '181460122': 1, '181457932': 1, '181465296': 1 };
 
   function detectPDPCategory() {
     var bcLinks = document.querySelectorAll('.breadcrumbs a, .ec-breadcrumbs a, [class*="breadcrumb"] a');
