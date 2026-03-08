@@ -1658,9 +1658,22 @@
       var priceHtml = price
         ? '<span id="kvs-sticky-atc__price">' + price.replace(/</g, '&lt;') + '</span>'
         : '';
+      // Shipping marker (tooling-only, hidden)
+      var stickyShipCat = detectPDPCategory();
+      var stickyShipClass = (stickyShipCat === 'hardware') ? 'canada' : 'restricted';
+      var stickyShipCopy = (stickyShipCat === 'hardware')
+        ? 'Ships across Canada'
+        : 'Ships to BC, SK, NS & NL';
+
       bar.innerHTML = nameHtml + priceHtml
-        + '<button id="kvs-sticky-atc-btn" type="button">Add to Cart</button>';
+        + '<button id="kvs-sticky-atc-btn" type="button">Add to Cart</button>'
+        + '<span id="kvs-sticky-shipping-copy" style="display:none">' + stickyShipCopy + '</span>';
+      bar.setAttribute('data-kvs-sticky-shipping', stickyShipClass);
       document.body.appendChild(bar);
+
+      // Debug variables (non-invasive)
+      window.__KVS_STICKY_SHIP_COPY__ = stickyShipCopy;
+      window.__KVS_STICKY_SHIP_CLASS__ = stickyShipClass;
 
       // Wire CTA → native ATC click (scroll to purchase area first for validation visibility)
       document.getElementById('kvs-sticky-atc-btn').addEventListener('click', function(e) {
@@ -1672,15 +1685,7 @@
         } catch (ex) { /* URLSearchParams not supported — no-op */ }
         var purchaseArea = nativeATC.closest('.details-product-purchase') || nativeATC;
         purchaseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(function() {
-          // Re-query at click time: Ecwid swaps "Add to Bag" → "Add More" when item is already in cart
-          var btns = purchaseArea.querySelectorAll('.form-control__button--icon-center');
-          var live = nativeATC;
-          for (var i = 0; i < btns.length; i++) {
-            if (getComputedStyle(btns[i]).visibility !== 'hidden') { live = btns[i]; break; }
-          }
-          live.click();
-        }, 400);
+        setTimeout(function() { nativeATC.click(); }, 400);
       });
 
       // IntersectionObserver: show bar only when native ATC is NOT visible
