@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.2
+   KVS — Site Scripts v3.2.3
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -1466,13 +1466,58 @@
 
   var _stickyATCObserver = null;
 
-  function initStickyATC() {
-    // Cleanup previous instance
+  function getStickyATCKillSwitchReason() {
+    try {
+      if (window.__KVS_DISABLE_STICKY_ATC__ === true) return 'window_flag';
+
+      var params = new URLSearchParams(window.location.search || '');
+      if (params.get('kvs_sticky_atc') === '0') return 'url_param';
+
+      if (window.localStorage && window.localStorage.getItem('kvs_sticky_atc') === '0') {
+        return 'localstorage';
+      }
+    } catch (e) {
+      // no-op: fail-open to existing behavior
+    }
+    return '';
+  }
+
+  function cleanupStickyATC() {
     var old = document.getElementById('kvs-sticky-atc');
     if (old) old.remove();
     if (_stickyATCObserver) {
       _stickyATCObserver.disconnect();
       _stickyATCObserver = null;
+    }
+  }
+
+  function initStickyATC() {
+    // Cleanup previous instance first (idempotent)
+    cleanupStickyATC();
+
+    // Global kill switch (no behavior change when not set)
+    var killReason = getStickyATCKillSwitchReason();
+    if (killReason) {
+      window.__KVS_STICKY_ATC_DISABLED__ = killReason;
+      return;
+    }
+    window.__KVS_STICKY_ATC_DISABLED__ = '';
+
+    // Runtime watchdog for toggling disable after init
+    // (e.g. console flag/localStorage change on SPA route)
+    var killWatchdog = setInterval(function() {
+      var reason = getStickyATCKillSwitchReason();
+      if (!reason) return;
+      window.__KVS_STICKY_ATC_DISABLED__ = reason;
+      cleanupStickyATC();
+      clearInterval(killWatchdog);
+    }, 1000);
+    setTimeout(function() { clearInterval(killWatchdog); }, 30000);
+
+    // Guard inside async poll too
+    if (getStickyATCKillSwitchReason()) {
+      cleanupStickyATC();
+      return;
     }
 
     // Gate: PDPs only (/products/<slug>-p<id>)
@@ -1499,6 +1544,13 @@
       if (document.getElementById('kvs-sticky-atc')) {
         clearInterval(checkInterval);
         return;
+      }
+
+      var liveKillReason = getStickyATCKillSwitchReason();
+      if (liveKillReason) {
+        window.__KVS_STICKY_ATC_DISABLED__ = liveKillReason;
+        cleanupStickyATC();
+        clearInterval(checkInterval);
       }
 
       // Don't show if age gate is active
@@ -1551,6 +1603,14 @@
       _stickyATCObserver = new IntersectionObserver(function(entries) {
         var nativeVisible = entries[0].isIntersecting;
         var ageGateOpen = !!document.getElementById('kvs-age-gate');
+        var killReason = getStickyATCKillSwitchReason();
+
+        if (killReason) {
+          window.__KVS_STICKY_ATC_DISABLED__ = killReason;
+          cleanupStickyATC();
+          return;
+        }
+
         if (nativeVisible || ageGateOpen) {
           bar.classList.remove('kvs-sticky-visible');
         } else {
@@ -1636,6 +1696,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.2';
+  window.__KVS_VERSION__ = '3.2.3';
 
 })();
