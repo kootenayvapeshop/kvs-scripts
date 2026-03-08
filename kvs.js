@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.5
+   KVS — Site Scripts v3.2.6
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -1672,7 +1672,15 @@
         } catch (ex) { /* URLSearchParams not supported — no-op */ }
         var purchaseArea = nativeATC.closest('.details-product-purchase') || nativeATC;
         purchaseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(function() { nativeATC.click(); }, 400);
+        setTimeout(function() {
+          // Re-query at click time: Ecwid swaps "Add to Bag" → "Add More" when item is already in cart
+          var btns = purchaseArea.querySelectorAll('.form-control__button--icon-center');
+          var live = nativeATC;
+          for (var i = 0; i < btns.length; i++) {
+            if (getComputedStyle(btns[i]).visibility !== 'hidden') { live = btns[i]; break; }
+          }
+          live.click();
+        }, 400);
       });
 
       // IntersectionObserver: show bar only when native ATC is NOT visible
@@ -1815,6 +1823,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.5';
+  window.__KVS_VERSION__ = '3.2.6';
 
 })();
