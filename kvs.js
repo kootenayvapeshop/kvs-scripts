@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.7
+   KVS — Site Scripts v3.2.8
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -31,6 +31,7 @@
    25. Shipping Context Line — shipping time estimate below PDP trust badges
    26. Sticky ATC Bar — floating add-to-cart bar on PDPs
    27. Category Guide Links — guide link on Disposables + Salt Nic
+   28. Option Select Nudge — pulse unselected dropdowns on PDPs after 2s
    ============================================================ */
 
 (function() {
@@ -1322,6 +1323,7 @@
           initTrustBadges();
           initShippingContext();
           initStickyATC();
+          initOptionNudge();
         }, 1500);
       }
     }, 1000);
@@ -1754,6 +1756,114 @@
   }
 
   /* ──────────────────────────────────────
+     28. OPTION SELECT NUDGE
+     On PDPs with unselected "Please choose"
+     dropdowns, pulse the first one after 2s
+     and show a helper hint on the sticky bar.
+     SPA-safe. Lightweight timeouts only.
+  ────────────────────────────────────── */
+
+  var _optionNudgeTimer = null;
+  var _optionNudgeChangeHandler = null;
+
+  function cleanupOptionNudge() {
+    if (_optionNudgeTimer) { clearTimeout(_optionNudgeTimer); _optionNudgeTimer = null; }
+    var style = document.getElementById('kvs-option-nudge-style');
+    if (style) style.remove();
+    var hint = document.getElementById('kvs-option-nudge-hint');
+    if (hint) hint.remove();
+    // Remove pulse class from all selects
+    var pulsed = document.querySelectorAll('.kvs-option-pulse');
+    for (var i = 0; i < pulsed.length; i++) pulsed[i].classList.remove('kvs-option-pulse');
+    if (_optionNudgeChangeHandler) {
+      document.removeEventListener('change', _optionNudgeChangeHandler);
+      _optionNudgeChangeHandler = null;
+    }
+  }
+
+  function initOptionNudge() {
+    cleanupOptionNudge();
+
+    // Gate: PDPs only
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    // Don't run while age gate is open
+    if (document.getElementById('kvs-age-gate')) return;
+
+    // Inject CSS once
+    if (!document.getElementById('kvs-option-nudge-style')) {
+      var style = document.createElement('style');
+      style.id = 'kvs-option-nudge-style';
+      style.textContent = [
+        '@keyframes kvs-pulse{0%{box-shadow:0 0 0 0 rgba(155,45,255,0.5)}70%{box-shadow:0 0 0 8px rgba(155,45,255,0)}100%{box-shadow:0 0 0 0 rgba(155,45,255,0)}}',
+        '.kvs-option-pulse{animation:kvs-pulse 1.5s ease-in-out 3;border-color:rgba(155,45,255,0.6)!important;}',
+        '#kvs-option-nudge-hint{font-size:0.75rem;color:rgba(200,200,220,0.85);text-align:center;padding:4px 16px 0;letter-spacing:0.02em;}'
+      ].join('');
+      document.head.appendChild(style);
+    }
+
+    // Delay 2s then check for unselected options
+    _optionNudgeTimer = setTimeout(function() {
+      // Re-check: still on PDP? Age gate still closed?
+      if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+      if (document.getElementById('kvs-age-gate')) return;
+
+      var unselected = getUnselectedOptions();
+      if (unselected.length === 0) return;
+
+      // Pulse the first unselected dropdown
+      unselected[0].classList.add('kvs-option-pulse');
+
+      // Add hint above sticky bar (if sticky bar exists)
+      var stickyBar = document.getElementById('kvs-sticky-atc');
+      if (stickyBar && !document.getElementById('kvs-option-nudge-hint')) {
+        var hint = document.createElement('div');
+        hint.id = 'kvs-option-nudge-hint';
+        hint.textContent = '\u2191 Select options above to add to cart';
+        stickyBar.insertBefore(hint, stickyBar.firstChild);
+      }
+
+      // Listen for change events to dismiss nudge
+      _optionNudgeChangeHandler = function(e) {
+        if (!e.target || e.target.tagName !== 'SELECT') return;
+        if (e.target.closest('.ec-currency-converter-element')) return;
+
+        // Remove pulse from this select
+        e.target.classList.remove('kvs-option-pulse');
+
+        // Check if any unselected remain
+        var remaining = getUnselectedOptions();
+        if (remaining.length > 0) {
+          // Pulse the next unselected one
+          remaining[0].classList.add('kvs-option-pulse');
+        } else {
+          // All selected — remove hint
+          var hint = document.getElementById('kvs-option-nudge-hint');
+          if (hint) hint.remove();
+          document.removeEventListener('change', _optionNudgeChangeHandler);
+          _optionNudgeChangeHandler = null;
+        }
+      };
+      document.addEventListener('change', _optionNudgeChangeHandler);
+    }, 2000);
+  }
+
+  function getUnselectedOptions() {
+    var selects = document.querySelectorAll('.product-details select.form-control__select');
+    var unselected = [];
+    for (var i = 0; i < selects.length; i++) {
+      var s = selects[i];
+      // Skip currency converter
+      if (s.closest('.ec-currency-converter-element')) continue;
+      // Check if "Please choose" is selected
+      if (s.value === 'Please choose' || (s.parentElement && s.parentElement.classList.contains('form-control--empty'))) {
+        unselected.push(s);
+      }
+    }
+    return unselected;
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -1776,6 +1886,7 @@
       initTrustBadges();
       initCartTrustBadges();
       initStickyATC();
+      initOptionNudge();
       initGTMNoscript();
       // Delayed sections: wait for Instant Site tiles to render
       setTimeout(function() {
@@ -1804,6 +1915,7 @@
     initTrustBadges();
     initCartTrustBadges();
     initStickyATC();
+    initOptionNudge();
     initGTMNoscript();
     setTimeout(function() {
       fixKimberleyH1();
@@ -1828,6 +1940,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.7';
+  window.__KVS_VERSION__ = '3.2.8';
 
 })();
