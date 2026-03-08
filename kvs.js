@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.3
+   KVS — Site Scripts v3.2.4
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -30,6 +30,7 @@
    24. Pickup Locations Collapse — keeps pickup section collapsed on PDPs
    25. Shipping Context Line — shipping time estimate below PDP trust badges
    26. Sticky ATC Bar — floating add-to-cart bar on PDPs
+   27. Category Guide Links — guide link on Disposables + Salt Nic
    ============================================================ */
 
 (function() {
@@ -1281,6 +1282,7 @@
           initBestSellers();
           initCategoryLinks();
           initCategoryHelper();
+          initCategoryGuideLinks();
           initHubLinks();
           initProductRelatedLinks();
           initOGTags();
@@ -1624,6 +1626,45 @@
   }
 
   /* ──────────────────────────────────────
+     27. CATEGORY GUIDE LINKS
+     One guide link on Disposables + Salt Nic
+     category pages only.
+  ────────────────────────────────────── */
+  function initCategoryGuideLinks() {
+    var existing = document.getElementById('kvs-category-guide');
+    if (existing) existing.remove();
+
+    var path = window.location.pathname;
+    var guides = {
+      '/products/Disposables-c181465790': {
+        href: '/buy-disposable-vapes-bc',
+        text: 'Buy Disposable Vapes in BC (19+)'
+      },
+      '/products/Salt-Nic-c181460122': {
+        href: '/salt-nic-ejuice-bc',
+        text: 'Salt Nic E-Juice in BC (19+)'
+      }
+    };
+    var data = guides[path];
+    if (!data) return;
+
+    var block = document.createElement('div');
+    block.id = 'kvs-category-guide';
+    block.style.cssText = 'max-width:960px;margin:0.75rem auto 1rem;padding:0 1rem;font-size:0.9rem;color:#9090b0;';
+    block.innerHTML = 'Guide: <a href="' + data.href + '" style="color:#00d4ff;text-decoration:underline;">' + data.text + '</a>';
+
+    var desc = document.querySelector('.grid__description');
+    if (desc) {
+      desc.parentElement.insertBefore(block, desc.nextSibling);
+      return;
+    }
+    var grid = document.querySelector('.ec-store') || document.querySelector('[class*="product"]');
+    if (grid) {
+      grid.parentElement.insertBefore(block, grid);
+    }
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -1660,6 +1701,7 @@
         initBestSellers();
         initCategoryLinks();
         initCategoryHelper();
+        initCategoryGuideLinks();
         initHubLinks();
         initProductRelatedLinks();
         initShippingContext();
@@ -1686,6 +1728,7 @@
       initBestSellers();
       initCategoryLinks();
       initCategoryHelper();
+      initCategoryGuideLinks();
       initHubLinks();
       initProductRelatedLinks();
       initShippingContext();
@@ -1696,6 +1739,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.3';
+  window.__KVS_VERSION__ = '3.2.4';
 
 })();
