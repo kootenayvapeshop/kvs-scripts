@@ -1825,11 +1825,8 @@
 
       // Listen for change events to dismiss nudge
       _optionNudgeChangeHandler = function(e) {
-        window.__KVS_NUDGE_HANDLER_FIRED__ = true;
-        window.__KVS_NUDGE_EVENT_TARGET__ = e.target ? e.target.tagName : 'none';
         if (!e.target || e.target.tagName !== 'SELECT') return;
         if (e.target.closest('.ec-currency-converter-element')) return;
-        window.__KVS_NUDGE_HANDLER_PASSED_GUARDS__ = true;
 
         // Clear ALL pulse classes (handles Ecwid re-rendering selects)
         var pulsed = document.querySelectorAll('.kvs-option-pulse');
