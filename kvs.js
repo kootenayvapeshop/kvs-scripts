@@ -1776,7 +1776,7 @@
     var pulsed = document.querySelectorAll('.kvs-option-pulse');
     for (var i = 0; i < pulsed.length; i++) pulsed[i].classList.remove('kvs-option-pulse');
     if (_optionNudgeChangeHandler) {
-      document.removeEventListener('change', _optionNudgeChangeHandler);
+      document.removeEventListener('change', _optionNudgeChangeHandler, true);
       _optionNudgeChangeHandler = null;
     }
   }
@@ -1840,11 +1840,12 @@
           // All selected — remove hint
           var hint = document.getElementById('kvs-option-nudge-hint');
           if (hint) hint.remove();
-          document.removeEventListener('change', _optionNudgeChangeHandler);
+          document.removeEventListener('change', _optionNudgeChangeHandler, true);
           _optionNudgeChangeHandler = null;
         }
       };
-      document.addEventListener('change', _optionNudgeChangeHandler);
+      // Use capture phase — Ecwid stops change event propagation on selects
+      document.addEventListener('change', _optionNudgeChangeHandler, true);
     }, 2000);
   }
 
