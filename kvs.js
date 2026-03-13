@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.8
+   KVS — Site Scripts v3.2.9
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -32,6 +32,7 @@
    26. Sticky ATC Bar — floating add-to-cart bar on PDPs
    27. Category Guide Links — guide link on Disposables + Salt Nic
    28. Option Select Nudge — pulse unselected dropdowns on PDPs after 2s
+   29. Option Gate on CTA Click — intercept ATC when options unselected
    ============================================================ */
 
 (function() {
@@ -1677,7 +1678,7 @@
       window.__KVS_STICKY_SHIP_COPY__ = stickyShipCopy;
       window.__KVS_STICKY_SHIP_CLASS__ = stickyShipClass;
 
-      // Wire CTA → native ATC click (scroll to purchase area first for validation visibility)
+      // Wire CTA → native ATC click (with option gate intercept)
       document.getElementById('kvs-sticky-atc-btn').addEventListener('click', function(e) {
         e.preventDefault();
         try {
@@ -1685,6 +1686,10 @@
             console.info('[KVS_DEBUG] sticky_atc_clicked');
           }
         } catch (ex) { /* URLSearchParams not supported — no-op */ }
+
+        // Option gate: if unselected options, intercept and guide user
+        if (handleOptionGate('sticky')) return;
+
         var purchaseArea = nativeATC.closest('.details-product-purchase') || nativeATC;
         purchaseArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(function() { nativeATC.click(); }, 400);
@@ -1866,6 +1871,103 @@
   }
 
   /* ──────────────────────────────────────
+     29. OPTION GATE ON CTA CLICK
+     When sticky or native ATC is clicked
+     with unselected options, intercept the
+     click, scroll to first unselected
+     dropdown, re-pulse, and show inline
+     error. Idempotent + SPA-safe.
+  ────────────────────────────────────── */
+
+  var _optionGateInlineMsg = null;
+
+  function removeOptionGateInline() {
+    if (_optionGateInlineMsg) {
+      _optionGateInlineMsg.remove();
+      _optionGateInlineMsg = null;
+    }
+  }
+
+  function handleOptionGate(source) {
+    var unselected = getUnselectedOptions();
+    if (unselected.length === 0) return false; // no gate needed
+
+    var firstSelect = unselected[0];
+
+    // 1. Scroll to first unselected dropdown
+    firstSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // 2. Re-trigger pulse (remove + re-add class to restart animation)
+    var allPulsed = document.querySelectorAll('.kvs-option-pulse');
+    for (var i = 0; i < allPulsed.length; i++) allPulsed[i].classList.remove('kvs-option-pulse');
+    void firstSelect.offsetWidth; // force reflow
+    firstSelect.classList.add('kvs-option-pulse');
+
+    // 3. Show inline error under the first unselected dropdown
+    removeOptionGateInline();
+    var optionWrap = firstSelect.closest('.details-product-option') || firstSelect.parentElement;
+    if (optionWrap) {
+      var label = '';
+      var labelEl = optionWrap.querySelector('.product-details-module__title');
+      if (labelEl) label = labelEl.textContent.trim();
+
+      var msg = document.createElement('div');
+      msg.id = 'kvs-option-gate-msg';
+      msg.style.cssText = 'font-size:0.8rem;color:#ff4d6a;margin-top:4px;padding:2px 0;letter-spacing:0.01em;';
+      msg.textContent = label
+        ? 'Please select ' + label + ' to continue'
+        : 'Please select an option to continue';
+      optionWrap.appendChild(msg);
+      _optionGateInlineMsg = msg;
+
+      // Auto-remove after 5s
+      setTimeout(function() {
+        if (msg.parentElement) msg.remove();
+        if (_optionGateInlineMsg === msg) _optionGateInlineMsg = null;
+      }, 5000);
+    }
+
+    // 4. Flash sticky CTA label if source is sticky
+    if (source === 'sticky') {
+      var stickyBtn = document.getElementById('kvs-sticky-atc-btn');
+      if (stickyBtn) {
+        var origText = stickyBtn.textContent;
+        stickyBtn.textContent = 'Select options';
+        stickyBtn.style.opacity = '0.7';
+        setTimeout(function() {
+          stickyBtn.textContent = origText;
+          stickyBtn.style.opacity = '';
+        }, 3000);
+      }
+    }
+
+    // 5. Clear inline message when user selects an option
+    firstSelect.addEventListener('change', function onSelect() {
+      removeOptionGateInline();
+      firstSelect.removeEventListener('change', onSelect);
+    }, { once: true });
+
+    return true; // gate activated, caller should prevent default
+  }
+
+  function initOptionGate() {
+    // Gate: PDPs only
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    // Intercept native ATC button clicks
+    var nativeATC = document.querySelector('.details-product-purchase__add-to-bag');
+    if (nativeATC && !nativeATC.dataset.kvsOptionGate) {
+      nativeATC.dataset.kvsOptionGate = '1';
+      nativeATC.addEventListener('click', function(e) {
+        if (handleOptionGate('native')) {
+          // Don't prevent default — let Ecwid also show its validation
+          // but the scroll + pulse + inline msg gives immediate feedback
+        }
+      }, true); // capture phase to run before Ecwid's handler
+    }
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -1889,6 +1991,7 @@
       initCartTrustBadges();
       initStickyATC();
       initOptionNudge();
+      initOptionGate();
       initGTMNoscript();
       // Delayed sections: wait for Instant Site tiles to render
       setTimeout(function() {
@@ -1918,6 +2021,7 @@
     initCartTrustBadges();
     initStickyATC();
     initOptionNudge();
+    initOptionGate();
     initGTMNoscript();
     setTimeout(function() {
       fixKimberleyH1();
@@ -1942,6 +2046,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.8';
+  window.__KVS_VERSION__ = '3.2.9';
 
 })();
