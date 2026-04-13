@@ -1993,124 +1993,131 @@
         '.kvs-staff-review::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;background:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b);opacity:0;transition:opacity 0.2s ease;}',
         '.kvs-staff-review:hover::before{opacity:1;}',
         '.kvs-staff-reviewer{font-size:13px;font-weight:700;letter-spacing:0.04em;background:linear-gradient(135deg,#00d4ff,#9b2dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;}',
-        '.kvs-staff-text{font-size:15px;color:#191919;line-height:1.7;font-style:italic;}',
-        '@media(prefers-color-scheme:dark){.kvs-staff-review{background:linear-gradient(160deg,rgba(155,45,255,0.1),rgba(0,212,255,0.06));border-color:rgba(155,45,255,0.25);}.kvs-staff-text{color:#e0e0e0;}}',
+        '.kvs-staff-text{font-size:15px;color:#e0e0e0;line-height:1.7;font-style:italic;}',
         '@media(max-width:600px){.kvs-staff-review{padding:12px 14px;}.kvs-staff-text{font-size:14px;}}'
       ].join('\n');
       document.head.appendChild(style);
     }
 
-    // SPA cleanup
-    var stale = document.querySelector('.kvs-staff-picks');
-    if (stale) stale.remove();
+    // Parse review text in format: ⭐ STAFF PICK "quote" — Name, Location
+    // Also supports: Name: "quote" and plain text fallback
+    function parseReview(raw) {
+      // Format: ⭐ STAFF PICK "quote" — Name, Location
+      var m1 = raw.match(/^⭐?\s*STAFF PICK\s*"(.+?)"\s*[—–-]\s*(.+)$/s);
+      if (m1) return { text: m1[1].trim(), reviewer: m1[2].trim() };
 
-    var checkInterval = setInterval(function() {
-      // Don't double-inject
-      if (document.querySelector('.kvs-staff-picks')) {
-        clearInterval(checkInterval);
-        return;
-      }
+      // Format: ⭐ Name: "quote"
+      var m2 = raw.match(/^⭐?\s*(.+?):\s*"(.+?)"\s*$/s);
+      if (m2) return { text: m2[2].trim(), reviewer: m2[1].trim() };
 
-      // Find the "Staff Pick" attribute row
-      // Ecwid uses: .details-product-attribute__title / __value
-      var attrLabels = document.querySelectorAll(
-        '.details-product-attribute__title, ' +
-        '.product-details__product-attributes .product-details-module__title, ' +
-        '.ec-pd-attributes__item-name, ' +
-        '[class*="product-attribute"] [class*="title"]'
-      );
-      var staffLabel = null;
-      var staffValue = null;
+      // Format: "quote" — Name
+      var m3 = raw.match(/^"(.+?)"\s*[—–-]\s*(.+)$/s);
+      if (m3) return { text: m3[1].trim(), reviewer: m3[2].trim() };
 
-      for (var i = 0; i < attrLabels.length; i++) {
-        var labelText = attrLabels[i].textContent.trim().replace(/:$/, '');
-        if (labelText === 'Staff Pick') {
-          staffLabel = attrLabels[i];
-          // Try sibling with __value class first
-          var nextSib = attrLabels[i].nextElementSibling;
-          if (nextSib && nextSib.className && nextSib.className.indexOf('value') !== -1) {
-            staffValue = nextSib;
-          }
-          // Fallback: search parent for value element
-          if (!staffValue) {
-            var parent = attrLabels[i].closest('[class*="product-attribute"]') || attrLabels[i].parentElement;
-            if (parent) {
-              staffValue = parent.querySelector('[class*="value"]') || parent.querySelector('[class*="content"]');
-            }
-          }
-          if (!staffValue) staffValue = nextSib;
-          break;
-        }
-      }
+      // Plain text fallback
+      return { text: raw.trim(), reviewer: null };
+    }
 
-      if (!staffValue || !staffValue.textContent.trim()) return;
-      clearInterval(checkInterval);
+    // Render the Staff Pick widget from raw attribute text
+    function renderStaffPicks(rawText) {
+      // Remove any existing widget
+      var existing = document.querySelector('.kvs-staff-picks');
+      if (existing) existing.remove();
 
-      var rawText = staffValue.textContent.trim();
-
-      // Hide the raw attribute row (div.details-product-attribute)
-      var attrRow = staffLabel
-        ? (staffLabel.closest('.details-product-attribute') || staffLabel.closest('[class*="product-attribute"]') || staffLabel.parentElement)
-        : null;
-      if (attrRow) attrRow.style.display = 'none';
+      if (!rawText || !rawText.trim()) return;
 
       // Parse reviews — double-newline separated blocks
       var reviews = rawText.split(/\n\n+/).filter(function(r) { return r.trim().length > 0; });
 
-      // Build container
       var container = document.createElement('div');
       container.className = 'kvs-staff-picks';
 
       // Header
       var header = document.createElement('div');
       header.className = 'kvs-staff-picks-header';
-      header.innerHTML = '<span class="kvs-staff-picks-icon">⭐</span>' +
+      header.innerHTML = '<span class="kvs-staff-picks-icon">\u2B50</span>' +
         '<span class="kvs-staff-picks-title">Staff Picks</span>';
       container.appendChild(header);
 
       // Review cards
-      reviews.forEach(function(review) {
+      reviews.forEach(function(reviewRaw) {
+        var parsed = parseReview(reviewRaw.trim());
         var card = document.createElement('div');
         card.className = 'kvs-staff-review';
 
-        // Try to parse "Name: review text" or "⭐ Name: review text"
-        var match = review.match(/^⭐?\s*(.+?):\s*"?(.+?)"?\s*$/s);
-        if (match) {
+        if (parsed.reviewer) {
           var reviewer = document.createElement('div');
           reviewer.className = 'kvs-staff-reviewer';
-          reviewer.textContent = '⭐ ' + match[1].trim();
+          reviewer.textContent = '\u2B50 ' + parsed.reviewer;
           card.appendChild(reviewer);
-
-          var text = document.createElement('div');
-          text.className = 'kvs-staff-text';
-          text.textContent = '\u201C' + match[2].trim() + '\u201D';
-          card.appendChild(text);
-        } else {
-          var textOnly = document.createElement('div');
-          textOnly.className = 'kvs-staff-text';
-          textOnly.textContent = review.trim();
-          card.appendChild(textOnly);
         }
+
+        var text = document.createElement('div');
+        text.className = 'kvs-staff-text';
+        text.textContent = parsed.reviewer
+          ? '\u201C' + parsed.text + '\u201D'
+          : parsed.text;
+        card.appendChild(text);
 
         container.appendChild(card);
       });
 
-      // Insert below product description, or above attributes
-      var descSection = document.querySelector('.product-details__product-description') ||
-                        document.querySelector('[class*="product-description"]') ||
-                        document.querySelector('.product-details-module--description');
+      // Insert below product description
+      var descSection = document.querySelector('.product-details__product-description');
       if (descSection) {
         descSection.parentNode.insertBefore(container, descSection.nextSibling);
       } else {
-        var attrsSection = document.querySelector('.product-details__product-attributes') ||
-                          document.querySelector('[class*="product-attributes"]');
+        var attrsSection = document.querySelector('.product-details__product-attributes');
         if (attrsSection) {
           attrsSection.parentNode.insertBefore(container, attrsSection);
         }
       }
+    }
+
+    // Find Staff Pick attribute, hide raw row, return text (or null)
+    function findAndHideStaffPick() {
+      var titles = document.querySelectorAll('.details-product-attribute__title');
+      for (var i = 0; i < titles.length; i++) {
+        if (titles[i].textContent.trim().replace(/:$/, '') === 'Staff Pick') {
+          var val = titles[i].nextElementSibling;
+          var row = titles[i].closest('.details-product-attribute');
+          if (row) row.style.display = 'none';
+          return (val && val.textContent.trim()) ? val.textContent.trim() : null;
+        }
+      }
+      return null;
+    }
+
+    // Check and render — called on load and on variant change
+    function checkAndRender() {
+      var rawText = findAndHideStaffPick();
+      if (rawText) {
+        renderStaffPicks(rawText);
+      } else {
+        // No Staff Pick for this variant — remove widget if present
+        var existing = document.querySelector('.kvs-staff-picks');
+        if (existing) existing.remove();
+      }
+    }
+
+    // Poll until attributes section exists, then attach observer
+    var checkInterval = setInterval(function() {
+      var attrsSection = document.querySelector('.product-details__product-attributes');
+      if (!attrsSection) return;
+      clearInterval(checkInterval);
+
+      // Initial render
+      checkAndRender();
+
+      // Watch for attribute changes (variant selection changes attributes)
+      var observer = new MutationObserver(function() {
+        // Debounce: wait for Ecwid to finish updating
+        clearTimeout(observer._debounce);
+        observer._debounce = setTimeout(checkAndRender, 300);
+      });
+      observer.observe(attrsSection, { childList: true, subtree: true, characterData: true });
     }, 800);
 
-    // Stop checking after 30s
     setTimeout(function() { clearInterval(checkInterval); }, 30000);
   }
 
