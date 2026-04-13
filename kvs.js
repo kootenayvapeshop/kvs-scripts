@@ -2089,10 +2089,33 @@
       }
     }
 
+    // Check if a flavour has actually been selected (not "Please choose")
+    function isFlavourSelected() {
+      var selects = document.querySelectorAll('.details-product-option select, .product-details-module__title');
+      var flavourSelect = null;
+      // Find the Flavour dropdown specifically
+      var optionLabels = document.querySelectorAll('.product-details-module__title, .details-product-option__title');
+      for (var i = 0; i < optionLabels.length; i++) {
+        if (/flavou?r/i.test(optionLabels[i].textContent)) {
+          var optionWrap = optionLabels[i].closest('.details-product-option') || optionLabels[i].parentElement;
+          if (optionWrap) flavourSelect = optionWrap.querySelector('select');
+          break;
+        }
+      }
+      if (!flavourSelect) return true; // No flavour dropdown = not a variant product, allow render
+      var val = flavourSelect.value || flavourSelect.options[flavourSelect.selectedIndex].text;
+      return val && !/please choose/i.test(val);
+    }
+
     // Main check: wait for DOM, find attribute, render
     function checkAndRender() {
       // Small delay for Ecwid to finish updating DOM after variant change
       setTimeout(function() {
+        // Only show if customer has actively selected a flavour
+        if (!isFlavourSelected()) {
+          removeWidget();
+          return;
+        }
         var rawText = findStaffPickText();
         if (rawText) {
           renderWidget(rawText);
