@@ -1,5 +1,5 @@
 /* ============================================================
-   KVS — Site Scripts v3.2.9
+   KVS — Site Scripts v3.3.0
    External JS for Kootenay Vape Shops
    Loaded via: <script src="https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js"></script>
 
@@ -33,6 +33,7 @@
    27. Category Guide Links — guide link on Disposables + Salt Nic
    28. Option Select Nudge — pulse unselected dropdowns on PDPs after 2s
    29. Option Gate on CTA Click — intercept ATC when options unselected
+   30. Staff Picks — styled review cards from "Staff Pick" product attribute
    ============================================================ */
 
 (function() {
@@ -1968,6 +1969,141 @@
   }
 
   /* ──────────────────────────────────────
+     30. STAFF PICKS
+     Reads the "Staff Pick" product attribute,
+     hides the raw row, and renders styled
+     review cards below the product description.
+  ────────────────────────────────────── */
+
+  function initStaffPicks() {
+    // Only run on product pages
+    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+    // Inject CSS once
+    if (!document.getElementById('kvs-staff-picks-css')) {
+      var style = document.createElement('style');
+      style.id = 'kvs-staff-picks-css';
+      style.textContent = [
+        '.kvs-staff-picks{margin:28px 0;font-family:"Barlow","Arial",sans-serif;}',
+        '.kvs-staff-picks-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid transparent;border-image:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b) 1;}',
+        '.kvs-staff-picks-icon{font-size:20px;}',
+        '.kvs-staff-picks-title{font-family:"Bebas Neue","Barlow","Arial",sans-serif;font-size:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;background:linear-gradient(135deg,#00d4ff,#9b2dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}',
+        '.kvs-staff-review{position:relative;padding:16px 20px;margin-bottom:10px;border-radius:10px;background:linear-gradient(160deg,rgba(155,45,255,0.06),rgba(0,212,255,0.04));border:1px solid rgba(155,45,255,0.18);transition:border-color 0.2s ease;}',
+        '.kvs-staff-review:hover{border-color:rgba(155,45,255,0.35);}',
+        '.kvs-staff-review::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;background:linear-gradient(135deg,#00d4ff,#9b2dff,#ff2d9b);opacity:0;transition:opacity 0.2s ease;}',
+        '.kvs-staff-review:hover::before{opacity:1;}',
+        '.kvs-staff-reviewer{font-size:13px;font-weight:700;letter-spacing:0.04em;background:linear-gradient(135deg,#00d4ff,#9b2dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;}',
+        '.kvs-staff-text{font-size:15px;color:#191919;line-height:1.7;font-style:italic;}',
+        '@media(prefers-color-scheme:dark){.kvs-staff-review{background:linear-gradient(160deg,rgba(155,45,255,0.1),rgba(0,212,255,0.06));border-color:rgba(155,45,255,0.25);}.kvs-staff-text{color:#e0e0e0;}}',
+        '@media(max-width:600px){.kvs-staff-review{padding:12px 14px;}.kvs-staff-text{font-size:14px;}}'
+      ].join('\n');
+      document.head.appendChild(style);
+    }
+
+    // SPA cleanup
+    var stale = document.querySelector('.kvs-staff-picks');
+    if (stale) stale.remove();
+
+    var checkInterval = setInterval(function() {
+      // Don't double-inject
+      if (document.querySelector('.kvs-staff-picks')) {
+        clearInterval(checkInterval);
+        return;
+      }
+
+      // Find the "Staff Pick" attribute row
+      var attrLabels = document.querySelectorAll(
+        '.product-details__product-attributes .product-details-module__title, ' +
+        '.ec-pd-attributes__item-name, ' +
+        '[class*="product-attribute"] [class*="title"]'
+      );
+      var staffLabel = null;
+      var staffValue = null;
+
+      for (var i = 0; i < attrLabels.length; i++) {
+        if (attrLabels[i].textContent.trim() === 'Staff Pick') {
+          staffLabel = attrLabels[i];
+          var parent = attrLabels[i].closest('[class*="product-attribute"]') || attrLabels[i].parentElement;
+          if (parent) {
+            staffValue = parent.querySelector('[class*="content"], [class*="value"]');
+          }
+          if (!staffValue) staffValue = attrLabels[i].nextElementSibling;
+          break;
+        }
+      }
+
+      if (!staffValue || !staffValue.textContent.trim()) return;
+      clearInterval(checkInterval);
+
+      var rawText = staffValue.textContent.trim();
+
+      // Hide the raw attribute row
+      var attrRow = staffLabel
+        ? (staffLabel.closest('[class*="product-attribute"]') || staffLabel.parentElement)
+        : null;
+      if (attrRow) attrRow.style.display = 'none';
+
+      // Parse reviews — double-newline separated blocks
+      var reviews = rawText.split(/\n\n+/).filter(function(r) { return r.trim().length > 0; });
+
+      // Build container
+      var container = document.createElement('div');
+      container.className = 'kvs-staff-picks';
+
+      // Header
+      var header = document.createElement('div');
+      header.className = 'kvs-staff-picks-header';
+      header.innerHTML = '<span class="kvs-staff-picks-icon">⭐</span>' +
+        '<span class="kvs-staff-picks-title">Staff Picks</span>';
+      container.appendChild(header);
+
+      // Review cards
+      reviews.forEach(function(review) {
+        var card = document.createElement('div');
+        card.className = 'kvs-staff-review';
+
+        // Try to parse "Name: review text" or "⭐ Name: review text"
+        var match = review.match(/^⭐?\s*(.+?):\s*"?(.+?)"?\s*$/s);
+        if (match) {
+          var reviewer = document.createElement('div');
+          reviewer.className = 'kvs-staff-reviewer';
+          reviewer.textContent = '⭐ ' + match[1].trim();
+          card.appendChild(reviewer);
+
+          var text = document.createElement('div');
+          text.className = 'kvs-staff-text';
+          text.textContent = '\u201C' + match[2].trim() + '\u201D';
+          card.appendChild(text);
+        } else {
+          var textOnly = document.createElement('div');
+          textOnly.className = 'kvs-staff-text';
+          textOnly.textContent = review.trim();
+          card.appendChild(textOnly);
+        }
+
+        container.appendChild(card);
+      });
+
+      // Insert below product description, or above attributes
+      var descSection = document.querySelector('.product-details__product-description') ||
+                        document.querySelector('[class*="product-description"]') ||
+                        document.querySelector('.product-details-module--description');
+      if (descSection) {
+        descSection.parentNode.insertBefore(container, descSection.nextSibling);
+      } else {
+        var attrsSection = document.querySelector('.product-details__product-attributes') ||
+                          document.querySelector('[class*="product-attributes"]');
+        if (attrsSection) {
+          attrsSection.parentNode.insertBefore(container, attrsSection);
+        }
+      }
+    }, 800);
+
+    // Stop checking after 30s
+    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+  }
+
+  /* ──────────────────────────────────────
      INIT — Run everything
   ────────────────────────────────────── */
 
@@ -1992,6 +2128,7 @@
       initStickyATC();
       initOptionNudge();
       initOptionGate();
+      initStaffPicks();
       initGTMNoscript();
       // Delayed sections: wait for Instant Site tiles to render
       setTimeout(function() {
@@ -2022,6 +2159,7 @@
     initStickyATC();
     initOptionNudge();
     initOptionGate();
+    initStaffPicks();
     initGTMNoscript();
     setTimeout(function() {
       fixKimberleyH1();
@@ -2046,6 +2184,6 @@
   }
 
   // Runtime version marker
-  window.__KVS_VERSION__ = '3.2.9';
+  window.__KVS_VERSION__ = '3.3.0';
 
 })();
