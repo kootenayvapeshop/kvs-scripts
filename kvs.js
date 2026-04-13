@@ -2012,7 +2012,9 @@
       }
 
       // Find the "Staff Pick" attribute row
+      // Ecwid uses: .details-product-attribute__title / __value
       var attrLabels = document.querySelectorAll(
+        '.details-product-attribute__title, ' +
         '.product-details__product-attributes .product-details-module__title, ' +
         '.ec-pd-attributes__item-name, ' +
         '[class*="product-attribute"] [class*="title"]'
@@ -2021,13 +2023,22 @@
       var staffValue = null;
 
       for (var i = 0; i < attrLabels.length; i++) {
-        if (attrLabels[i].textContent.trim() === 'Staff Pick') {
+        var labelText = attrLabels[i].textContent.trim().replace(/:$/, '');
+        if (labelText === 'Staff Pick') {
           staffLabel = attrLabels[i];
-          var parent = attrLabels[i].closest('[class*="product-attribute"]') || attrLabels[i].parentElement;
-          if (parent) {
-            staffValue = parent.querySelector('[class*="content"], [class*="value"]');
+          // Try sibling with __value class first
+          var nextSib = attrLabels[i].nextElementSibling;
+          if (nextSib && nextSib.className && nextSib.className.indexOf('value') !== -1) {
+            staffValue = nextSib;
           }
-          if (!staffValue) staffValue = attrLabels[i].nextElementSibling;
+          // Fallback: search parent for value element
+          if (!staffValue) {
+            var parent = attrLabels[i].closest('[class*="product-attribute"]') || attrLabels[i].parentElement;
+            if (parent) {
+              staffValue = parent.querySelector('[class*="value"]') || parent.querySelector('[class*="content"]');
+            }
+          }
+          if (!staffValue) staffValue = nextSib;
           break;
         }
       }
@@ -2037,9 +2048,9 @@
 
       var rawText = staffValue.textContent.trim();
 
-      // Hide the raw attribute row
+      // Hide the raw attribute row (div.details-product-attribute)
       var attrRow = staffLabel
-        ? (staffLabel.closest('[class*="product-attribute"]') || staffLabel.parentElement)
+        ? (staffLabel.closest('.details-product-attribute') || staffLabel.closest('[class*="product-attribute"]') || staffLabel.parentElement)
         : null;
       if (attrRow) attrRow.style.display = 'none';
 
