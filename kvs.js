@@ -1970,110 +1970,41 @@
 
   /* ──────────────────────────────────────
      30. STAFF PICKS
-     Reads the "Staff Pick" product attribute,
-     hides the raw row, and renders styled
-     review cards below the product description.
+     Uses Ecwid JS API (OnPageLoaded +
+     OnProductOptionsChanged) to detect
+     variant changes. Renders review cards
+     in Shadow DOM to avoid Ecwid CSS
+     interference. Per Gemini recommendation.
   ────────────────────────────────────── */
 
   function initStaffPicks() {
-    // Only run on product pages
-    if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+    // Shadow DOM CSS — completely isolated from Ecwid theme
+    var SHADOW_CSS = [
+      '@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&display=swap");',
+      ':host{display:block;margin:20px 0;font-family:"Barlow","Arial",sans-serif;}',
+      '.header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #9b2dff;}',
+      '.header-icon{font-size:20px;}',
+      '.header-title{font-family:"Bebas Neue","Barlow",sans-serif;font-size:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#00d4ff;}',
+      '.card{padding:16px 20px;margin-bottom:10px;border-radius:10px;background:rgba(155,45,255,0.08);border:1px solid rgba(155,45,255,0.25);transition:border-color 0.2s;}',
+      '.card:hover{border-color:rgba(155,45,255,0.5);}',
+      '.reviewer{font-size:13px;font-weight:700;letter-spacing:0.04em;color:#00d4ff;margin-bottom:6px;}',
+      '.quote{font-size:15px;color:#e0e0e0;line-height:1.7;font-style:italic;}',
+      '@media(max-width:600px){.card{padding:12px 14px;}.quote{font-size:14px;}}'
+    ].join('\n');
 
-    // Inject CSS once
-    if (!document.getElementById('kvs-staff-picks-css')) {
-      var style = document.createElement('style');
-      style.id = 'kvs-staff-picks-css';
-      style.textContent = [
-        'div.kvs-staff-picks{margin:28px 0 !important;font-family:"Barlow","Arial",sans-serif !important;}',
-        'div.kvs-staff-picks .kvs-staff-picks-header{display:flex !important;align-items:center !important;gap:10px !important;margin-bottom:16px !important;padding-bottom:10px !important;border-bottom:2px solid #9b2dff !important;}',
-        'div.kvs-staff-picks .kvs-staff-picks-icon{font-size:20px !important;}',
-        'div.kvs-staff-picks .kvs-staff-picks-title{font-family:"Bebas Neue","Barlow","Arial",sans-serif !important;font-size:18px !important;font-weight:700 !important;letter-spacing:0.08em !important;text-transform:uppercase !important;color:#00d4ff !important;}',
-        'div.kvs-staff-picks .kvs-staff-review{position:relative !important;padding:16px 20px !important;margin-bottom:10px !important;border-radius:10px !important;background:rgba(155,45,255,0.08) !important;border:1px solid rgba(155,45,255,0.25) !important;}',
-        'div.kvs-staff-picks .kvs-staff-review:hover{border-color:rgba(155,45,255,0.5) !important;}',
-        'div.kvs-staff-picks .kvs-staff-reviewer{font-size:13px !important;font-weight:700 !important;letter-spacing:0.04em !important;color:#00d4ff !important;margin-bottom:6px !important;-webkit-text-fill-color:#00d4ff !important;}',
-        'div.kvs-staff-picks .kvs-staff-text{font-size:15px !important;color:#e0e0e0 !important;line-height:1.7 !important;font-style:italic !important;-webkit-text-fill-color:#e0e0e0 !important;}',
-        '@media(max-width:600px){div.kvs-staff-picks .kvs-staff-review{padding:12px 14px !important;}div.kvs-staff-picks .kvs-staff-text{font-size:14px !important;}}'
-      ].join('\n');
-      document.head.appendChild(style);
-    }
-
-    // Parse review text in format: ⭐ STAFF PICK "quote" — Name, Location
-    // Also supports: Name: "quote" and plain text fallback
+    // Parse review: ⭐ STAFF PICK "quote" — Name, Location
     function parseReview(raw) {
-      // Format: ⭐ STAFF PICK "quote" — Name, Location
       var m1 = raw.match(/^⭐?\s*STAFF PICK\s*"(.+?)"\s*[—–-]\s*(.+)$/s);
       if (m1) return { text: m1[1].trim(), reviewer: m1[2].trim() };
-
-      // Format: ⭐ Name: "quote"
       var m2 = raw.match(/^⭐?\s*(.+?):\s*"(.+?)"\s*$/s);
       if (m2) return { text: m2[2].trim(), reviewer: m2[1].trim() };
-
-      // Format: "quote" — Name
       var m3 = raw.match(/^"(.+?)"\s*[—–-]\s*(.+)$/s);
       if (m3) return { text: m3[1].trim(), reviewer: m3[2].trim() };
-
-      // Plain text fallback
       return { text: raw.trim(), reviewer: null };
     }
 
-    // Render the Staff Pick widget from raw attribute text
-    function renderStaffPicks(rawText) {
-      // Remove any existing widget
-      var existing = document.querySelector('.kvs-staff-picks');
-      if (existing) existing.remove();
-
-      if (!rawText || !rawText.trim()) return;
-
-      // Parse reviews — double-newline separated blocks
-      var reviews = rawText.split(/\n\n+/).filter(function(r) { return r.trim().length > 0; });
-
-      var container = document.createElement('div');
-      container.className = 'kvs-staff-picks';
-
-      // Header
-      var header = document.createElement('div');
-      header.className = 'kvs-staff-picks-header';
-      header.innerHTML = '<span class="kvs-staff-picks-icon">\u2B50</span>' +
-        '<span class="kvs-staff-picks-title">Staff Picks</span>';
-      container.appendChild(header);
-
-      // Review cards
-      reviews.forEach(function(reviewRaw) {
-        var parsed = parseReview(reviewRaw.trim());
-        var card = document.createElement('div');
-        card.className = 'kvs-staff-review';
-
-        if (parsed.reviewer) {
-          var reviewer = document.createElement('div');
-          reviewer.className = 'kvs-staff-reviewer';
-          reviewer.textContent = '\u2B50 ' + parsed.reviewer;
-          card.appendChild(reviewer);
-        }
-
-        var text = document.createElement('div');
-        text.className = 'kvs-staff-text';
-        text.textContent = parsed.reviewer
-          ? '\u201C' + parsed.text + '\u201D'
-          : parsed.text;
-        card.appendChild(text);
-
-        container.appendChild(card);
-      });
-
-      // Insert below product description
-      var descSection = document.querySelector('.product-details__product-description');
-      if (descSection) {
-        descSection.parentNode.insertBefore(container, descSection.nextSibling);
-      } else {
-        var attrsSection = document.querySelector('.product-details__product-attributes');
-        if (attrsSection) {
-          attrsSection.parentNode.insertBefore(container, attrsSection);
-        }
-      }
-    }
-
-    // Find Staff Pick attribute, hide raw row, return text (or null)
-    function findAndHideStaffPick() {
+    // Find Staff Pick attribute in DOM, hide raw row, return text
+    function findStaffPickText() {
       var titles = document.querySelectorAll('.details-product-attribute__title');
       for (var i = 0; i < titles.length; i++) {
         if (titles[i].textContent.trim().replace(/:$/, '') === 'Staff Pick') {
@@ -2086,37 +2017,107 @@
       return null;
     }
 
-    // Check and render — called on load and on variant change
-    function checkAndRender() {
-      var rawText = findAndHideStaffPick();
-      if (rawText) {
-        renderStaffPicks(rawText);
-      } else {
-        // No Staff Pick for this variant — remove widget if present
-        var existing = document.querySelector('.kvs-staff-picks');
-        if (existing) existing.remove();
+    // Remove existing widget
+    function removeWidget() {
+      var host = document.getElementById('kvs-staff-picks-host');
+      if (host) host.remove();
+    }
+
+    // Render widget using Shadow DOM
+    function renderWidget(rawText) {
+      removeWidget();
+      if (!rawText || !rawText.trim()) return;
+
+      var reviews = rawText.split(/\n\n+/).filter(function(r) { return r.trim().length > 0; });
+
+      // Create Shadow DOM host OUTSIDE .product-details to avoid Ecwid CSS
+      var host = document.createElement('div');
+      host.id = 'kvs-staff-picks-host';
+      var shadow = host.attachShadow({ mode: 'open' });
+
+      // Inject isolated styles
+      var style = document.createElement('style');
+      style.textContent = SHADOW_CSS;
+      shadow.appendChild(style);
+
+      // Header
+      var header = document.createElement('div');
+      header.className = 'header';
+      header.innerHTML = '<span class="header-icon">\u2B50</span><span class="header-title">Staff Picks</span>';
+      shadow.appendChild(header);
+
+      // Review cards
+      reviews.forEach(function(reviewRaw) {
+        var parsed = parseReview(reviewRaw.trim());
+        var card = document.createElement('div');
+        card.className = 'card';
+
+        if (parsed.reviewer) {
+          var reviewer = document.createElement('div');
+          reviewer.className = 'reviewer';
+          reviewer.textContent = '\u2B50 ' + parsed.reviewer;
+          card.appendChild(reviewer);
+        }
+
+        var quote = document.createElement('div');
+        quote.className = 'quote';
+        quote.textContent = parsed.reviewer
+          ? '\u201C' + parsed.text + '\u201D'
+          : parsed.text;
+        card.appendChild(quote);
+
+        shadow.appendChild(card);
+      });
+
+      // Insert: try after description, then before attributes, then after purchase area
+      var descSection = document.querySelector('.product-details__product-description');
+      var attrsSection = document.querySelector('.product-details__product-attributes');
+      var purchaseArea = document.querySelector('.details-product-purchase');
+      if (descSection && descSection.parentNode) {
+        descSection.parentNode.insertBefore(host, descSection.nextSibling);
+      } else if (attrsSection && attrsSection.parentNode) {
+        attrsSection.parentNode.insertBefore(host, attrsSection);
+      } else if (purchaseArea && purchaseArea.parentNode) {
+        purchaseArea.parentNode.insertBefore(host, purchaseArea.nextSibling);
       }
     }
 
-    // Poll until attributes section exists, then attach observer
-    var checkInterval = setInterval(function() {
-      var attrsSection = document.querySelector('.product-details__product-attributes');
-      if (!attrsSection) return;
-      clearInterval(checkInterval);
+    // Main check: wait for DOM, find attribute, render
+    function checkAndRender() {
+      // Small delay for Ecwid to finish updating DOM after variant change
+      setTimeout(function() {
+        var rawText = findStaffPickText();
+        if (rawText) {
+          renderWidget(rawText);
+        } else {
+          removeWidget();
+        }
+      }, 600);
+    }
 
-      // Initial render
-      checkAndRender();
-
-      // Watch for attribute changes (variant selection changes attributes)
-      var observer = new MutationObserver(function() {
-        // Debounce: wait for Ecwid to finish updating
-        clearTimeout(observer._debounce);
-        observer._debounce = setTimeout(checkAndRender, 300);
+    // Use Ecwid JS API for reliable detection
+    if (typeof Ecwid !== 'undefined') {
+      // Fire on product page load
+      Ecwid.OnPageLoaded.add(function(page) {
+        if (page.type === 'PRODUCT') {
+          checkAndRender();
+        } else {
+          removeWidget();
+        }
       });
-      observer.observe(attrsSection, { childList: true, subtree: true, characterData: true });
-    }, 800);
 
-    setTimeout(function() { clearInterval(checkInterval); }, 30000);
+      // Fire on variant/option change (flavour, strength, etc.)
+      if (Ecwid.OnProductOptionsChanged) {
+        Ecwid.OnProductOptionsChanged.add(function() {
+          checkAndRender();
+        });
+      }
+    }
+
+    // Fallback: also run on current page if already on a product page
+    if (/\/products\/.*-p\d+/i.test(window.location.pathname)) {
+      checkAndRender();
+    }
   }
 
   /* ──────────────────────────────────────
