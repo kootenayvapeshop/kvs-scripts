@@ -1979,17 +1979,17 @@
 
   function initStaffPicks() {
     // Shadow DOM CSS — completely isolated from Ecwid theme
+    // Compact design: sits below flavour selector without pushing ATC too far
     var SHADOW_CSS = [
-      '@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700&display=swap");',
-      ':host{display:block;margin:20px 0;font-family:"Barlow","Arial",sans-serif;}',
-      '.header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #9b2dff;}',
-      '.header-icon{font-size:20px;}',
-      '.header-title{font-family:"Bebas Neue","Barlow",sans-serif;font-size:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#00d4ff;}',
-      '.card{padding:16px 20px;margin-bottom:10px;border-radius:10px;background:rgba(155,45,255,0.08);border:1px solid rgba(155,45,255,0.25);transition:border-color 0.2s;}',
+      '@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap");',
+      ':host{display:block;margin:8px 0 12px;font-family:"Barlow","Arial",sans-serif;}',
+      '.card{padding:12px 16px;border-radius:8px;background:rgba(155,45,255,0.08);border:1px solid rgba(155,45,255,0.25);transition:border-color 0.2s;}',
       '.card:hover{border-color:rgba(155,45,255,0.5);}',
-      '.reviewer{font-size:13px;font-weight:700;letter-spacing:0.04em;color:#00d4ff;margin-bottom:6px;}',
-      '.quote{font-size:15px;color:#e0e0e0;line-height:1.7;font-style:italic;}',
-      '@media(max-width:600px){.card{padding:12px 14px;}.quote{font-size:14px;}}'
+      '.top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}',
+      '.badge{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#00d4ff;white-space:nowrap;}',
+      '.reviewer{font-size:12px;font-weight:600;color:rgba(224,224,224,0.7);}',
+      '.quote{font-size:14px;color:#e0e0e0;line-height:1.55;font-style:italic;}',
+      '@media(max-width:600px){.card{padding:10px 12px;}.quote{font-size:13px;}}'
     ].join('\n');
 
     // Parse review: ⭐ STAFF PICK "quote" — Name, Location
@@ -2040,24 +2040,26 @@
       style.textContent = SHADOW_CSS;
       shadow.appendChild(style);
 
-      // Header
-      var header = document.createElement('div');
-      header.className = 'header';
-      header.innerHTML = '<span class="header-icon">\u2B50</span><span class="header-title">Staff Picks</span>';
-      shadow.appendChild(header);
-
-      // Review cards
+      // Render compact review cards
       reviews.forEach(function(reviewRaw) {
         var parsed = parseReview(reviewRaw.trim());
         var card = document.createElement('div');
         card.className = 'card';
 
+        // Top line: ⭐ STAFF PICK · Reviewer Name
+        var top = document.createElement('div');
+        top.className = 'top';
+        var badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = '\u2B50 Staff Pick';
+        top.appendChild(badge);
         if (parsed.reviewer) {
-          var reviewer = document.createElement('div');
-          reviewer.className = 'reviewer';
-          reviewer.textContent = '\u2B50 ' + parsed.reviewer;
-          card.appendChild(reviewer);
+          var dot = document.createElement('span');
+          dot.className = 'reviewer';
+          dot.textContent = '\u00B7 ' + parsed.reviewer;
+          top.appendChild(dot);
         }
+        card.appendChild(top);
 
         var quote = document.createElement('div');
         quote.className = 'quote';
@@ -2069,16 +2071,21 @@
         shadow.appendChild(card);
       });
 
-      // Insert: try after description, then before attributes, then after purchase area
-      var descSection = document.querySelector('.product-details__product-description');
-      var attrsSection = document.querySelector('.product-details__product-attributes');
+      // Insert right after the first product option (Flavour selector)
+      // This places the review as contextual social proof right where the decision happens
+      var optionGroups = document.querySelectorAll('.details-product-option');
       var purchaseArea = document.querySelector('.details-product-purchase');
-      if (descSection && descSection.parentNode) {
-        descSection.parentNode.insertBefore(host, descSection.nextSibling);
-      } else if (attrsSection && attrsSection.parentNode) {
-        attrsSection.parentNode.insertBefore(host, attrsSection);
+      if (optionGroups.length > 0) {
+        // After the first option group (Flavour)
+        optionGroups[0].parentNode.insertBefore(host, optionGroups[0].nextSibling);
       } else if (purchaseArea && purchaseArea.parentNode) {
-        purchaseArea.parentNode.insertBefore(host, purchaseArea.nextSibling);
+        purchaseArea.parentNode.insertBefore(host, purchaseArea);
+      } else {
+        // Fallback: before description
+        var descSection = document.querySelector('.product-details__product-description');
+        if (descSection && descSection.parentNode) {
+          descSection.parentNode.insertBefore(host, descSection);
+        }
       }
     }
 
