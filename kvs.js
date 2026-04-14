@@ -635,6 +635,7 @@
 
     // Don't double-append
     if (title.indexOf('Kootenay Vape') !== -1) return;
+    if (title.indexOf('| KVS') !== -1) return;
     // Don't exceed ~65 chars total (Google truncates around there)
     if (title.length + suffix.length > 70) {
       suffix = ' | Kootenay Vape Shops';
