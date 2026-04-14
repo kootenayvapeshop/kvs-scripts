@@ -2144,8 +2144,38 @@
       }
     }
 
-    // Fallback: also run on current page if already on a product page
+    // Fallback: watch for select changes directly (catches programmatic + user selection)
     if (/\/products\/.*-p\d+/i.test(window.location.pathname)) {
+      // Watch all product option selects for change events
+      var watchSelects = setInterval(function() {
+        var optSelects = document.querySelectorAll('.details-product-option select');
+        if (optSelects.length === 0) return;
+        clearInterval(watchSelects);
+
+        optSelects.forEach(function(sel) {
+          sel.addEventListener('change', function() {
+            checkAndRender();
+          });
+        });
+      }, 800);
+      setTimeout(function() { clearInterval(watchSelects); }, 30000);
+
+      // Watch the attributes section for DOM changes (belt-and-suspenders)
+      var watchAttrs = setInterval(function() {
+        var attrsSection = document.querySelector('.product-details__product-attributes');
+        if (!attrsSection) return;
+        clearInterval(watchAttrs);
+
+        var debounceTimer;
+        var observer = new MutationObserver(function() {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(checkAndRender, 400);
+        });
+        observer.observe(attrsSection, { childList: true, subtree: true, characterData: true });
+      }, 800);
+      setTimeout(function() { clearInterval(watchAttrs); }, 30000);
+
+      // Also run initial check
       checkAndRender();
     }
   }
