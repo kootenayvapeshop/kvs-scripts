@@ -2089,95 +2089,30 @@
       }
     }
 
-    // Check if a flavour has actually been selected (not "Please choose")
-    function isFlavourSelected() {
-      var selects = document.querySelectorAll('.details-product-option select, .product-details-module__title');
-      var flavourSelect = null;
-      // Find the Flavour dropdown specifically
-      var optionLabels = document.querySelectorAll('.product-details-module__title, .details-product-option__title');
-      for (var i = 0; i < optionLabels.length; i++) {
-        if (/flavou?r/i.test(optionLabels[i].textContent)) {
-          var optionWrap = optionLabels[i].closest('.details-product-option') || optionLabels[i].parentElement;
-          if (optionWrap) flavourSelect = optionWrap.querySelector('select');
-          break;
-        }
+    // Simple polling — the same pattern every other kvs.js feature uses.
+    // Checks every second for the Staff Pick attribute. If found and not
+    // already rendered (or text changed), renders the widget.
+    // If attribute disappears (variant changed), removes the widget.
+    var _lastStaffPickText = '';
+
+    var pollInterval = setInterval(function() {
+      // Only on product pages
+      if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+      var currentText = findStaffPickText() || '';
+
+      // Nothing changed — skip
+      if (currentText === _lastStaffPickText) return;
+      _lastStaffPickText = currentText;
+
+      if (currentText) {
+        renderWidget(currentText);
+      } else {
+        removeWidget();
       }
-      if (!flavourSelect) return true; // No flavour dropdown = not a variant product, allow render
-      var val = flavourSelect.value || flavourSelect.options[flavourSelect.selectedIndex].text;
-      return val && !/please choose/i.test(val);
-    }
+    }, 1000);
 
-    // Main check: wait for DOM, find attribute, render
-    function checkAndRender() {
-      // Small delay for Ecwid to finish updating DOM after variant change
-      setTimeout(function() {
-        // Only show if customer has actively selected a flavour
-        if (!isFlavourSelected()) {
-          removeWidget();
-          return;
-        }
-        var rawText = findStaffPickText();
-        if (rawText) {
-          renderWidget(rawText);
-        } else {
-          removeWidget();
-        }
-      }, 600);
-    }
-
-    // Use Ecwid JS API for reliable detection
-    if (typeof Ecwid !== 'undefined') {
-      // Fire on product page load
-      Ecwid.OnPageLoaded.add(function(page) {
-        if (page.type === 'PRODUCT') {
-          checkAndRender();
-        } else {
-          removeWidget();
-        }
-      });
-
-      // Fire on variant/option change (flavour, strength, etc.)
-      if (Ecwid.OnProductOptionsChanged) {
-        Ecwid.OnProductOptionsChanged.add(function() {
-          checkAndRender();
-        });
-      }
-    }
-
-    // Fallback: watch for select changes directly (catches programmatic + user selection)
-    if (/\/products\/.*-p\d+/i.test(window.location.pathname)) {
-      // Watch all product option selects for change events
-      var watchSelects = setInterval(function() {
-        var optSelects = document.querySelectorAll('.details-product-option select');
-        if (optSelects.length === 0) return;
-        clearInterval(watchSelects);
-
-        optSelects.forEach(function(sel) {
-          sel.addEventListener('change', function() {
-            checkAndRender();
-          });
-        });
-      }, 800);
-      setTimeout(function() { clearInterval(watchSelects); }, 30000);
-
-      // Watch the attributes section for DOM changes (belt-and-suspenders)
-      var watchAttrs = setInterval(function() {
-        var attrsSection = document.querySelector('.product-details__product-attributes');
-        if (!attrsSection) return;
-        clearInterval(watchAttrs);
-
-        var debounceTimer;
-        var observer = new MutationObserver(function() {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(checkAndRender, 400);
-        });
-        observer.observe(attrsSection, { childList: true, subtree: true, characterData: true });
-      }, 800);
-      setTimeout(function() { clearInterval(watchAttrs); }, 30000);
-
-      // Also run initial check
-      checkAndRender();
-    }
+    // Keep polling for the lifetime of the page (SPA — no unload)
   }
 
   /* ──────────────────────────────────────
