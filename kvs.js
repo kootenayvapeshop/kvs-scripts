@@ -2089,15 +2089,40 @@
       }
     }
 
+    // Check if a flavour has actually been selected (not "Please choose")
+    function isFlavourSelected() {
+      var optionLabels = document.querySelectorAll('.product-details-module__title, .details-product-option__title');
+      for (var i = 0; i < optionLabels.length; i++) {
+        if (/flavou?r/i.test(optionLabels[i].textContent)) {
+          var optionWrap = optionLabels[i].closest('.details-product-option') || optionLabels[i].parentElement;
+          if (optionWrap) {
+            var sel = optionWrap.querySelector('select');
+            if (sel) {
+              var val = sel.value || '';
+              return val !== '' && !/please choose/i.test(val);
+            }
+          }
+          return false;
+        }
+      }
+      return true; // No flavour dropdown = not a variant product, allow render
+    }
+
     // Simple polling — the same pattern every other kvs.js feature uses.
-    // Checks every second for the Staff Pick attribute. If found and not
-    // already rendered (or text changed), renders the widget.
-    // If attribute disappears (variant changed), removes the widget.
     var _lastStaffPickText = '';
 
     var pollInterval = setInterval(function() {
       // Only on product pages
       if (!/\/products\/.*-p\d+/i.test(window.location.pathname)) return;
+
+      // Don't show until customer has actually picked a flavour
+      if (!isFlavourSelected()) {
+        if (_lastStaffPickText !== '') {
+          _lastStaffPickText = '';
+          removeWidget();
+        }
+        return;
+      }
 
       var currentText = findStaffPickText() || '';
 
