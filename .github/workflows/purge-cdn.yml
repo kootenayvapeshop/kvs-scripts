@@ -11,8 +11,15 @@ jobs:
     steps:
       - name: Purge jsDelivr cache
         run: |
+          echo "Purging @main..."
           curl -s "https://purge.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js" | jq .
-          # Wait 5 seconds and purge again to be safe
-          sleep 5
+          sleep 10
           curl -s "https://purge.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js" | jq .
-          echo "CDN cache purged for kvs.js"
+          sleep 10
+          curl -s "https://purge.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@main/kvs.js" | jq .
+
+          echo ""
+          echo "=== Direct commit URL (always works, no caching) ==="
+          echo "https://cdn.jsdelivr.net/gh/kootenayvapeshop/kvs-scripts@${{ github.sha }}/kvs.js"
+          echo ""
+          echo "If @main is stale, use the commit URL above in Ecwid."
